@@ -7,7 +7,7 @@ This module handles all configuration and environment variables.
 import os
 from typing import Optional, List
 from pydantic_settings import BaseSettings
-from pydantic import Field, validator
+from pydantic import Field, field_validator
 from functools import lru_cache
 
 
@@ -72,7 +72,8 @@ class Settings(BaseSettings):
         env="CORS_ORIGINS"
     )
 
-    @validator("CORS_ORIGINS", pre=True)
+    @field_validator("CORS_ORIGINS", mode="before")
+    @classmethod
     def parse_cors_origins(cls, v):
         if isinstance(v, list):
             return v
@@ -85,7 +86,6 @@ class Settings(BaseSettings):
                 parsed = json.loads(v)
                 return parsed if isinstance(parsed, list) else [parsed]
             except Exception:
-                # Handle comma-separated string fallback
                 return [o.strip() for o in v.split(",") if o.strip()]
         return ["http://localhost:5173"]
     
