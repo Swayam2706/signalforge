@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+venv/
+.venv/
+env/
+
+# Node
+node_modules/
+signalforge/dist/
+signalforge/dist-ssr/
+
+# Env files — never commit secrets
+.env
+.env.local
+.env.*.local
+et_backend/.env
+signalforge/.env
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/settings.json
+.idea/
+
+# DB files
+*.db
+*.sqlite

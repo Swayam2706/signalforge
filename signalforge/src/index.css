@@ -1,0 +1,203 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  background-color: #0A0A0A;
+  color: #F9FAFB;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+
+@layer components {
+  .glass-panel {
+    background: rgba(17, 17, 17, 0.8);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+  .glass-card {
+    background: rgba(255, 255, 255, 0.04);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 4px 24px -2px rgba(0, 0, 0, 0.25);
+    transition: all 0.3s ease;
+  }
+  .glass-card:hover {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(212, 175, 55, 0.3);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 32px -4px rgba(0,0,0,0.3), 0 0 40px -10px rgba(212,175,55,0.1);
+  }
+  .text-gradient {
+    background: linear-gradient(135deg, #D4AF37 0%, #F4D03F 50%, #D4AF37 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-size: 200% 200%;
+    animation: shimmer 3s ease infinite;
+  }
+  .bg-grid {
+    /* Minor grid — small squares, very faint */
+    background-size: 32px 32px;
+    background-image:
+      linear-gradient(to right, rgba(255,255,255,0.03) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(255,255,255,0.03) 1px, transparent 1px);
+    mask-image:
+      radial-gradient(ellipse 70% 50% at 50% 40%, black 0%, transparent 70%);
+  }
+  .data-grid {
+    /* Major grid — larger squares, slightly stronger */
+    position: absolute; inset: 0;
+    background-size: 128px 128px;
+    background-image:
+      linear-gradient(to right, rgba(255,255,255,0.04) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(255,255,255,0.04) 1px, transparent 1px);
+    mask-image:
+      radial-gradient(ellipse 80% 60% at 50% 45%, black 0%, transparent 65%);
+    pointer-events: none;
+  }
+  .live-dot {
+    width: 6px; height: 6px; background: #16A34A; border-radius: 50%;
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+}
+
+@keyframes shimmer {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+@keyframes pulse {
+  0%, 100% { opacity: 0.4; box-shadow: 0 0 0 0 rgba(34,197,94,0.4); }
+  50% { opacity: 1; box-shadow: 0 0 0 4px rgba(34,197,94,0); }
+}
+
+/* Hero stagger entrance */
+.hero-stagger .hero-stagger-item {
+  opacity: 0;
+  transform: translateY(16px);
+  animation: heroReveal 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+.hero-stagger .hero-stagger-item:nth-child(1) { animation-delay: 0.1s; }
+.hero-stagger .hero-stagger-item:nth-child(2) { animation-delay: 0.22s; }
+.hero-stagger .hero-stagger-item:nth-child(3) { animation-delay: 0.34s; }
+.hero-stagger .hero-stagger-item:nth-child(4) { animation-delay: 0.46s; }
+.hero-stagger .hero-stagger-item:nth-child(5) { animation-delay: 0.58s; }
+
+@keyframes heroReveal {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Candlestick chart uses canvas with requestAnimationFrame — no CSS animation needed */
+
+/* ── Feature cards ── */
+.feature-card {
+  will-change: transform, box-shadow;
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+              border-color 0.4s ease,
+              background 0.4s ease,
+              box-shadow 0.4s ease;
+}
+.feature-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(212, 175, 55, 0.2);
+  box-shadow: 0 12px 40px -8px rgba(0, 0, 0, 0.3), 0 0 30px -8px rgba(212, 175, 55, 0.06);
+}
+.feature-card .feature-icon {
+  transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.feature-card:hover .feature-icon {
+  transform: scale(1.1);
+}
+
+/* ── Sidebar icons ── */
+.sidebar-icon {
+  will-change: transform;
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+              background 0.25s ease,
+              color 0.25s ease,
+              box-shadow 0.25s ease;
+}
+.sidebar-icon:hover {
+  transform: scale(1.08);
+}
+
+/* ── Auth page atmosphere ── */
+.auth-orb-1 {
+  animation: authOrb1 12s ease-in-out infinite;
+}
+.auth-orb-2 {
+  animation: authOrb2 15s ease-in-out infinite;
+}
+.auth-orb-3 {
+  animation: authOrb3 18s ease-in-out infinite;
+}
+
+@keyframes authOrb1 {
+  0%, 100% { transform: translate(0, 0); }
+  50% { transform: translate(-40px, 30px); }
+}
+@keyframes authOrb2 {
+  0%, 100% { transform: translate(0, 0); }
+  50% { transform: translate(35px, -25px); }
+}
+@keyframes authOrb3 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(-20px, 20px) scale(1.1); }
+}
+
+/* ── Demo modal animations ── */
+.demo-badge-glow {
+  animation: badgeGlow 2.5s ease-in-out infinite;
+}
+@keyframes badgeGlow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(22, 163, 74, 0); }
+  50% { box-shadow: 0 0 10px 2px rgba(22, 163, 74, 0.15); }
+}
+.demo-signal-row:hover {
+  transform: scale(1.01);
+}
+.demo-sweep {
+  background: linear-gradient(90deg, transparent 0%, rgba(212,175,55,0.05) 50%, transparent 100%);
+  background-size: 200% 100%;
+  animation: sweepLight 3s linear infinite;
+}
+@keyframes sweepLight {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+/* Scanning line that drifts vertically */
+.demo-scanline {
+  animation: scanVertical 6s linear infinite;
+}
+@keyframes scanVertical {
+  0% { top: -2%; }
+  100% { top: 102%; }
+}
+/* Animated dots after "AI analyzing" text */
+.demo-dots::after {
+  content: '';
+  animation: dotCycle 1.5s steps(4, end) infinite;
+}
+@keyframes dotCycle {
+  0% { content: ''; }
+  25% { content: '.'; }
+  50% { content: '..'; }
+  75% { content: '...'; }
+}
+/* Signal badge breathing */
+.demo-signal-badge {
+  animation: badgeBreath 3s ease-in-out infinite;
+}
+@keyframes badgeBreath {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.04); }
+}
