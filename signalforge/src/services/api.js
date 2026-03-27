@@ -10,15 +10,23 @@ const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
 async function apiFetch(path, options = {}) {
   const url = `${BASE_URL}${path}`;
-  const res = await fetch(url, {
-    headers: { 'Content-Type': 'application/json', ...options.headers },
-    ...options,
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ message: res.statusText }));
-    throw new Error(err.message || `API error ${res.status}`);
+  try {
+    const res = await fetch(url, {
+      headers: { 'Content-Type': 'application/json', ...options.headers },
+      ...options,
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ message: res.statusText }));
+      throw new Error(err.message || `API error ${res.status}`);
+    }
+    return res.json();
+  } catch (err) {
+    // In production with no backend, fail silently so UI still renders
+    if (err.message === 'Failed to fetch' || err.name === 'TypeError') {
+      throw new Error('Backend unavailable');
+    }
+    throw err;
   }
-  return res.json();
 }
 
 // ─── Client-side cache for stock detail (90s TTL) ────────────────────────────
