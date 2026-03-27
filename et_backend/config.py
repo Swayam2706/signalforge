@@ -7,7 +7,7 @@ This module handles all configuration and environment variables.
 import os
 from typing import Optional, List
 from pydantic_settings import BaseSettings
-from pydantic import Field
+from pydantic import Field, validator
 from functools import lru_cache
 
 
@@ -68,9 +68,26 @@ class Settings(BaseSettings):
         env="SECRET_KEY"
     )
     CORS_ORIGINS: List[str] = Field(
-        default=["http://localhost:3000", "http://localhost:8080"],
+        default=["http://localhost:3000", "http://localhost:5173", "http://localhost:8080"],
         env="CORS_ORIGINS"
     )
+
+    @validator("CORS_ORIGINS", pre=True)
+    def parse_cors_origins(cls, v):
+        if isinstance(v, list):
+            return v
+        if isinstance(v, str):
+            v = v.strip()
+            if not v:
+                return ["http://localhost:5173"]
+            try:
+                import json
+                parsed = json.loads(v)
+                return parsed if isinstance(parsed, list) else [parsed]
+            except Exception:
+                # Handle comma-separated string fallback
+                return [o.strip() for o in v.split(",") if o.strip()]
+        return ["http://localhost:5173"]
     
     # External API Configuration
     YFINANCE_TIMEOUT: int = Field(default=30, env="YFINANCE_TIMEOUT")
