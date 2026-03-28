@@ -279,58 +279,79 @@ export default function DashboardPage() {
   return (
     <DashboardLayout>
       <TopBar />
-      <main className="flex-1 overflow-y-auto p-6">
+      <main className="flex-1 overflow-y-auto p-6 bg-gradient-to-br from-base via-base to-[#0d0d0f]">
         <div className="max-w-[1400px] mx-auto">
           {/* Status */}
-          <div className="flex items-center gap-2 text-xs text-gray-500 mb-6">
+          <div className="flex items-center gap-2.5 text-xs text-gray-400 mb-7 px-1">
             <span className="live-dot" />
-            <span>Analyzing {dataPoints} data points in real-time</span>
+            <span className="font-medium">Analyzing <span className="text-white font-semibold">{dataPoints}</span> data points in real-time</span>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Left Column */}
             <div className="lg:col-span-2 space-y-6">
-              {/* Top AI Pick */}
-              <div className="glass-card rounded-2xl p-6 border border-gold/10 shadow-[0_20px_40px_-20px_rgba(212,175,55,0.15)]">
-                <div className="flex justify-between items-center mb-3">
-                  <span className="text-[11px] uppercase tracking-wider text-gray-500 font-medium">Top AI Pick</span>
-                  <span className="px-2 py-0.5 rounded-full bg-gold/10 text-gold text-[10px] font-medium">Ranked #1 Opportunity</span>
-                </div>
-                <div className="flex justify-between items-start">
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-lg bg-white/5 flex items-center justify-center font-semibold text-sm">{topPick.symbol.slice(0, 2)}</div>
-                    <div>
-                      <div className="font-semibold text-[17px]">{topPick.name}</div>
-                      <div className="text-xs text-gray-500">{topPick.symbol} • {topPick.sector} <span className={topPick.change >= 0 ? 'text-signal-green' : 'text-signal-red'}>{topPick.change >= 0 ? '↑ +' : '↓ '}{topPick.change}%</span></div>
-                    </div>
+              {/* Top AI Pick - Enhanced Hero Card */}
+              <div className="glass-card rounded-2xl p-7 border border-gold/20 shadow-[0_20px_60px_-15px_rgba(212,175,55,0.25),0_0_0_1px_rgba(212,175,55,0.05)] hover:shadow-[0_24px_70px_-15px_rgba(212,175,55,0.35),0_0_0_1px_rgba(212,175,55,0.1)] transition-all duration-500 relative overflow-hidden group">
+                {/* Subtle gradient overlay */}
+                <div className="absolute inset-0 bg-gradient-to-br from-gold/[0.03] via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+                
+                <div className="relative z-10">
+                  <div className="flex justify-between items-center mb-4">
+                    <span className="text-[11px] uppercase tracking-[0.1em] text-gray-400 font-semibold">Top AI Pick</span>
+                    <span className="px-3 py-1 rounded-full bg-gradient-to-r from-gold/20 to-gold/10 text-gold text-[10px] font-bold border border-gold/30 shadow-[0_0_12px_rgba(212,175,55,0.15)]">
+                      #1 Opportunity
+                    </span>
                   </div>
-                  <SignalBadge signal={topPick.signal} />
-                </div>
-                {/* Metrics */}
-                <div className="flex gap-6 my-4 py-4 border-y border-white/5">
-                  {[
-                    { label: 'Trend Strength', value: `${topPick.trendStrength}/100`, pct: topPick.trendStrength, color: 'bg-gold' },
-                    { label: 'Volume Spike', value: topPick.volumeSpike, pct: 92, color: 'bg-signal-green' },
-                    { label: 'Momentum', value: topPick.momentum, pct: 78, color: 'bg-signal-green' },
-                  ].map(m => (
-                    <div key={m.label} className="flex-1">
-                      <span className="text-[9px] text-gray-500 uppercase tracking-wider">{m.label}</span>
-                      <div className="h-[3px] bg-white/5 rounded-full overflow-hidden mt-1.5 mb-1">
-                        <div className={`h-full ${m.color} rounded-full`} style={{ width: `${m.pct}%` }} />
+                  
+                  <div className="flex justify-between items-start mb-5">
+                    <div className="flex items-center gap-3.5">
+                      <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-white/[0.08] to-white/[0.03] border border-white/[0.12] flex items-center justify-center font-bold text-base shadow-lg">
+                        {topPick.symbol.slice(0, 2)}
                       </div>
-                      <span className="text-[11px] font-medium text-white">{m.value}</span>
+                      <div>
+                        <div className="font-bold text-[18px] text-white mb-0.5">{topPick.name}</div>
+                        <div className="text-xs text-gray-400 flex items-center gap-2">
+                          <span className="font-mono font-semibold">{topPick.symbol}</span>
+                          <span className="text-gray-600">•</span>
+                          <span>{topPick.sector}</span>
+                          <span className={`font-semibold ${topPick.change >= 0 ? 'text-signal-green' : 'text-signal-red'}`}>
+                            {topPick.change >= 0 ? '↑ +' : '↓ '}{topPick.change}%
+                          </span>
+                        </div>
+                      </div>
                     </div>
-                  ))}
+                    <SignalBadge signal={topPick.signal} />
+                  </div>
+                  
+                  {/* Metrics */}
+                  <div className="flex gap-6 my-5 py-5 border-y border-white/[0.08]">
+                    {[
+                      { label: 'Trend Strength', value: `${topPick.trendStrength}/100`, pct: topPick.trendStrength, color: 'bg-gold' },
+                      { label: 'Volume Spike', value: topPick.volumeSpike, pct: 92, color: 'bg-signal-green' },
+                      { label: 'Momentum', value: topPick.momentum, pct: 78, color: 'bg-signal-green' },
+                    ].map(m => (
+                      <div key={m.label} className="flex-1">
+                        <span className="text-[9px] text-gray-500 uppercase tracking-[0.08em] font-semibold block mb-2">{m.label}</span>
+                        <div className="h-1 bg-white/[0.06] rounded-full overflow-hidden mb-2">
+                          <div className={`h-full ${m.color} rounded-full transition-all duration-700 ease-out shadow-[0_0_8px_currentColor]`} style={{ width: `${m.pct}%` }} />
+                        </div>
+                        <span className="text-xs font-bold text-white">{m.value}</span>
+                      </div>
+                    ))}
+                  </div>
+                  
+                  <p className="text-[13px] text-gray-300 leading-relaxed pl-4 border-l-2 border-gold/60 shadow-[inset_2px_0_8px_rgba(212,175,55,0.1)]">
+                    {topPick.insight}
+                  </p>
                 </div>
-                <p className="text-sm text-gray-300 leading-relaxed pl-3.5 border-l-2 border-gold">{topPick.insight}</p>
               </div>
 
               {/* Active Signals - Enhanced AI Trading Experience */}
               <div>
                 {/* Header with context */}
-                <div className="flex justify-between items-start mb-2">
+                <div className="flex justify-between items-start mb-3 px-1">
                   <div className="flex items-center gap-2">
-                    <h3 className="text-[13px] font-semibold text-white tracking-tight">Top AI Signals</h3>
+                    <h3 className="text-sm font-bold text-white tracking-tight">Top AI Signals</h3>
                     {/* Info tooltip */}
                     <div className="group/info relative">
                       <svg 
@@ -359,15 +380,15 @@ export default function DashboardPage() {
                   </div>
                   
                   {/* Filter buttons */}
-                  <div className="flex gap-1">
+                  <div className="flex gap-1.5">
                     {['All', 'Buy', 'Sell'].map((filter) => (
                       <button
                         key={filter}
                         onClick={() => setSignalFilter(filter)}
-                        className={`px-2.5 py-1 rounded-md text-[11px] font-medium cursor-pointer transition-all ${
+                        className={`px-3 py-1.5 rounded-lg text-[11px] font-semibold cursor-pointer transition-all duration-200 ${
                           signalFilter === filter
-                            ? 'bg-white/10 text-white shadow-sm'
-                            : 'text-gray-500 hover:text-gray-300 hover:bg-white/5'
+                            ? 'bg-white/[0.12] text-white shadow-[0_2px_8px_rgba(255,255,255,0.08)] border border-white/[0.15]'
+                            : 'text-gray-500 hover:text-gray-300 hover:bg-white/[0.06] border border-transparent'
                         }`}
                       >
                         {filter}
@@ -413,43 +434,49 @@ export default function DashboardPage() {
                 </div>
                 
                 {/* Signal list */}
-                <div className={`space-y-2 ${showAllSignals ? 'max-h-[600px] overflow-y-auto pr-1' : ''}`}>
+                <div className={`space-y-2.5 ${showAllSignals ? 'max-h-[600px] overflow-y-auto pr-1' : ''}`}>
                   {activeSignals.length > 0 ? (
                     activeSignals.map((s, idx) => (
                       <Link 
                         key={s.symbol} 
                         to={`/stock/${s.symbol}`}
-                        className="glass-card rounded-xl p-3 flex items-center gap-4 cursor-pointer hover:translate-x-0.5 transition-all group relative"
+                        className="glass-card rounded-xl p-4 flex items-center gap-4 cursor-pointer hover:translate-x-1 hover:shadow-[0_8px_32px_-8px_rgba(0,0,0,0.4),0_0_0_1px_rgba(212,175,55,0.2)] transition-all duration-300 group relative"
                       >
                         {/* Rank indicator for top signals */}
                         {!showAllSignals && idx < 3 && (
-                          <div className="absolute -left-1 top-1/2 -translate-y-1/2 w-1 h-8 rounded-r-full bg-gradient-to-b from-gold via-gold to-gold/40" />
+                          <div className="absolute -left-1 top-1/2 -translate-y-1/2 w-1 h-10 rounded-r-full bg-gradient-to-b from-gold via-gold to-gold/30 shadow-[0_0_8px_rgba(212,175,55,0.4)]" />
                         )}
                         
-                        <div className={`w-9 h-9 rounded-lg flex items-center justify-center font-semibold text-sm ${
-                          s.signal === 'Buy' || s.signal === 'Strong Buy' || s.signal === 'Breakout' || s.signal === 'Momentum' ? 'bg-signal-greenLight text-signal-green' :
-                          s.signal === 'Sell' || s.signal === 'Risky' ? 'bg-signal-redLight text-signal-red' : 'bg-white/5 text-white'
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm border transition-all duration-300 ${
+                          s.signal === 'Buy' || s.signal === 'Strong Buy' || s.signal === 'Breakout' || s.signal === 'Momentum' 
+                            ? 'bg-signal-greenLight text-signal-green border-signal-green/30 group-hover:border-signal-green/50' 
+                            : s.signal === 'Sell' || s.signal === 'Risky' 
+                            ? 'bg-signal-redLight text-signal-red border-signal-red/30 group-hover:border-signal-red/50' 
+                            : 'bg-white/[0.06] text-white border-white/[0.12] group-hover:border-white/[0.2]'
                         }`}>{s.logo}</div>
                         
                         <div className="flex-1 min-w-0">
-                          <div className="font-semibold text-sm">{s.name.split(' ')[0]}</div>
-                          <div className="text-[11px] text-gray-500">
-                            {s.symbol} 
-                            <span className={s.change >= 0 ? 'text-signal-green' : 'text-signal-red'}>
-                              {' '}{s.change >= 0 ? '↑' : '↓'} {s.change >= 0 ? '+' : ''}{s.change}%
+                          <div className="font-bold text-[15px] text-white mb-0.5">{s.name.split(' ')[0]}</div>
+                          <div className="text-[11px] text-gray-500 flex items-center gap-1.5">
+                            <span className="font-mono font-semibold">{s.symbol}</span>
+                            <span className={`font-bold ${s.change >= 0 ? 'text-signal-green' : 'text-signal-red'}`}>
+                              {s.change >= 0 ? '↑' : '↓'} {s.change >= 0 ? '+' : ''}{s.change}%
                             </span>
                           </div>
                         </div>
                         
-                        <MiniSparkline trend={s.change >= 0 ? 'up' : 'down'} />
+                        <MiniSparkline trend={s.change >= 0 ? 'up' : 'down'} className="opacity-70 group-hover:opacity-100 transition-opacity" />
                         <SignalBadge signal={s.signal} />
                         
                         <div className="flex items-center gap-3">
-                          <span className="text-[11px] text-gray-500 font-medium w-8 text-right">{s.confidence}%</span>
-                          <button className={`text-xs px-3 py-1.5 rounded-md font-medium transition-colors ${
+                          <div className="text-right">
+                            <div className="text-[10px] text-gray-600 uppercase tracking-wider font-semibold">Confidence</div>
+                            <div className="text-xs font-bold text-white">{s.confidence}%</div>
+                          </div>
+                          <button className={`text-xs px-3.5 py-2 rounded-lg font-bold transition-all duration-200 border ${
                             s.signal === 'Buy' || s.signal === 'Strong Buy' || s.signal === 'Breakout' || s.signal === 'Momentum' 
-                              ? 'bg-gold/10 text-gold hover:bg-gold/20' 
-                              : 'bg-white/5 text-gray-400 hover:bg-white/10'
+                              ? 'bg-gold/10 text-gold hover:bg-gold/20 border-gold/30 hover:border-gold/50 shadow-[0_0_12px_rgba(212,175,55,0.1)]' 
+                              : 'bg-white/[0.06] text-gray-400 hover:bg-white/[0.1] border-white/[0.08] hover:border-white/[0.15]'
                           }`}>
                             {s.signal === 'Sell' || s.signal === 'Risky' ? 'Monitor' : 'Review'}
                           </button>
@@ -457,7 +484,7 @@ export default function DashboardPage() {
                       </Link>
                     ))
                   ) : (
-                    <div className="glass-card rounded-xl p-6 text-center">
+                    <div className="glass-card rounded-xl p-8 text-center border border-white/[0.08]">
                       <p className="text-sm text-gray-500">No {signalFilter.toLowerCase()} signals found</p>
                     </div>
                   )}
@@ -468,21 +495,28 @@ export default function DashboardPage() {
             {/* Right Column */}
             <div className="space-y-6">
               {/* Market Sentiment */}
-              <div className="glass-card rounded-2xl p-5">
-                <span className="text-[11px] uppercase tracking-wider text-gray-500 font-medium block mb-3">Market Sentiment</span>
-                <div className="flex items-center gap-4">
-                  <div className="text-3xl font-light text-white">{sentiment.score}</div>
+              <div className="glass-card rounded-2xl p-6 border border-white/[0.08] hover:border-white/[0.12] transition-all duration-300">
+                <span className="text-[11px] uppercase tracking-[0.1em] text-gray-400 font-bold block mb-4">Market Sentiment</span>
+                <div className="flex items-center gap-5 mb-4">
+                  <div className="text-4xl font-bold text-white">{sentiment.score}</div>
                   <div className="flex-1">
-                    <div className="text-[11px] text-gray-500 mb-1">{sentiment.label} <span className={sentiment.score > 50 ? 'text-signal-green' : 'text-signal-red'}>{sentiment.score > 50 ? '↑' : '↓'}</span></div>
-                    <div className="w-full h-1 bg-white/5 rounded-full relative">
-                      <div className="h-full rounded-full bg-gradient-to-r from-signal-red via-gold to-signal-green" style={{ width: '100%' }} />
-                      <div className="absolute top-[-3px] w-2.5 h-2.5 bg-white rounded-full shadow-[0_0_6px_rgba(255,255,255,0.4)]" style={{ left: `${sentiment.score}%`, transform: 'translateX(-50%)' }} />
+                    <div className="text-xs text-gray-400 mb-2 font-semibold flex items-center gap-1.5">
+                      {sentiment.label} 
+                      <span className={`font-bold ${sentiment.score > 50 ? 'text-signal-green' : 'text-signal-red'}`}>
+                        {sentiment.score > 50 ? '↑' : '↓'}
+                      </span>
+                    </div>
+                    <div className="w-full h-1.5 bg-white/[0.06] rounded-full relative overflow-hidden">
+                      <div className="h-full rounded-full bg-gradient-to-r from-signal-red via-gold to-signal-green shadow-[0_0_12px_rgba(212,175,55,0.3)]" style={{ width: '100%' }} />
+                      <div className="absolute top-[-2px] w-3 h-3 bg-white rounded-full shadow-[0_0_8px_rgba(255,255,255,0.6),0_0_16px_rgba(212,175,55,0.4)] border-2 border-base transition-all duration-500" style={{ left: `${sentiment.score}%`, transform: 'translateX(-50%)' }} />
                     </div>
                   </div>
                 </div>
-                <div className="flex justify-between mt-3 text-xs">
-                  <span className="text-signal-green font-medium">{sentiment.changeText}</span>
-                  <span className="text-gray-600">vs yesterday</span>
+                <div className="flex justify-between text-xs px-0.5">
+                  <span className={`font-bold ${sentiment.changeText.startsWith('+') ? 'text-signal-green' : 'text-signal-red'}`}>
+                    {sentiment.changeText}
+                  </span>
+                  <span className="text-gray-600 font-medium">vs yesterday</span>
                 </div>
                 {/* Dynamic chart */}
                 <div className="mt-4 h-16">
@@ -513,48 +547,48 @@ export default function DashboardPage() {
               </div>
 
               {/* Signal Analytics */}
-              <div className="glass-card rounded-2xl p-5">
-                <span className="text-[11px] uppercase tracking-wider text-gray-500 font-medium block mb-3">Signal Analytics</span>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="bg-white/[0.03] rounded-lg p-3 border border-white/5">
-                    <div className="text-[10px] text-gray-500 uppercase tracking-wider mb-3">Buy vs Sell</div>
+              <div className="glass-card rounded-2xl p-6 border border-white/[0.08] hover:border-white/[0.12] transition-all duration-300">
+                <span className="text-[11px] uppercase tracking-[0.1em] text-gray-400 font-bold block mb-4">Signal Analytics</span>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-white/[0.04] rounded-xl p-4 border border-white/[0.08] hover:bg-white/[0.05] transition-all duration-300">
+                    <div className="text-[10px] text-gray-400 uppercase tracking-[0.08em] font-semibold mb-4">Buy vs Sell</div>
                     
                     {/* Compact 3-column metric layout */}
-                    <div className="space-y-3">
+                    <div className="space-y-3.5">
                       {[
                         { h: analytics.buyVsSell.bull, color: 'bg-signal-green', label: 'Buy', pct: analytics.buyVsSell.bull, count: analytics.counts.buy },
                         { h: analytics.buyVsSell.bear, color: 'bg-signal-red', label: 'Sell', pct: analytics.buyVsSell.bear, count: analytics.counts.sell },
                         { h: analytics.buyVsSell.mixed, color: 'bg-gold', label: 'Hold', pct: analytics.buyVsSell.mixed, count: analytics.counts.hold },
                       ].map(b => (
-                        <div key={b.label} className="flex items-center gap-2">
+                        <div key={b.label} className="flex items-center gap-2.5">
                           {/* Label */}
-                          <div className="w-10 text-[9px] text-gray-400 font-medium">{b.label}</div>
+                          <div className="w-10 text-[9px] text-gray-400 font-bold uppercase tracking-wider">{b.label}</div>
                           
                           {/* Progress bar */}
-                          <div className="flex-1 h-2 bg-white/[0.03] rounded-full overflow-hidden">
+                          <div className="flex-1 h-2 bg-white/[0.04] rounded-full overflow-hidden">
                             <div 
-                              className={`h-full ${b.color} rounded-full transition-all duration-500`} 
+                              className={`h-full ${b.color} rounded-full transition-all duration-700 ease-out shadow-[0_0_6px_currentColor]`} 
                               style={{ width: `${b.h}%` }}
                             />
                           </div>
                           
                           {/* Count and percentage */}
-                          <div className="flex items-baseline gap-1 min-w-[40px] justify-end">
-                            <span className="text-[11px] font-bold text-white">{b.count}</span>
-                            <span className="text-[8px] text-gray-500">({b.pct}%)</span>
+                          <div className="flex items-baseline gap-1 min-w-[42px] justify-end">
+                            <span className="text-xs font-bold text-white">{b.count}</span>
+                            <span className="text-[8px] text-gray-600 font-semibold">({b.pct}%)</span>
                           </div>
                         </div>
                       ))}
                     </div>
                     
                     {/* Summary Stats */}
-                    <div className="pt-3 mt-3 border-t border-white/5 flex justify-between text-[9px]">
-                      <span className="text-gray-500">Total Signals</span>
-                      <span className="text-white font-semibold">{analytics.counts.total}</span>
+                    <div className="pt-3.5 mt-3.5 border-t border-white/[0.08] flex justify-between text-[9px]">
+                      <span className="text-gray-500 font-semibold uppercase tracking-wider">Total</span>
+                      <span className="text-white font-bold">{analytics.counts.total}</span>
                     </div>
                   </div>
-                  <div className="bg-white/[0.03] rounded-lg p-3 border border-white/5">
-                    <div className="text-[10px] text-gray-500 uppercase tracking-wider mb-2">Sector Distribution</div>
+                  <div className="bg-white/[0.04] rounded-xl p-4 border border-white/[0.08] hover:bg-white/[0.05] transition-all duration-300">
+                    <div className="text-[10px] text-gray-400 uppercase tracking-[0.08em] font-semibold mb-3">Sector Distribution</div>
                     <div className="flex items-center gap-3 mt-2">
                       <svg width="50" height="50" viewBox="0 0 50 50">
                         <circle cx="25" cy="25" r="20" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="8" />
@@ -600,17 +634,30 @@ export default function DashboardPage() {
               </div>
 
               {/* Top Movers */}
-              <div className="glass-card rounded-2xl p-5">
-                <div className="flex items-center gap-2 mb-3">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#D4AF37" strokeWidth="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></svg>
-                  <span className="text-[11px] uppercase tracking-wider text-gray-500 font-medium">Top Movers</span>
+              <div className="glass-card rounded-2xl p-6 border border-white/[0.08] hover:border-white/[0.12] transition-all duration-300">
+                <div className="flex items-center gap-2.5 mb-4">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#D4AF37" strokeWidth="2.5" className="drop-shadow-[0_0_6px_rgba(212,175,55,0.3)]">
+                    <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+                  </svg>
+                  <span className="text-[11px] uppercase tracking-[0.1em] text-gray-400 font-bold">Top Movers</span>
                 </div>
-                {topMovers.map(m => (
-                  <div key={m.symbol} className="flex justify-between items-center py-2 border-b border-white/5 last:border-0">
-                    <Link to={`/stock/${m.symbol}`} className="text-xs font-medium text-white hover:text-gold transition-colors">{m.symbol}</Link>
-                    <span className={`text-[11px] font-medium ${m.up ? 'text-signal-green' : 'text-signal-red'}`}>{m.change}</span>
-                  </div>
-                ))}
+                <div className="space-y-1">
+                  {topMovers.map((m, idx) => (
+                    <Link 
+                      key={m.symbol} 
+                      to={`/stock/${m.symbol}`}
+                      className="flex justify-between items-center py-2.5 px-2 rounded-lg hover:bg-white/[0.04] transition-all duration-200 group"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="text-[9px] text-gray-600 font-bold w-4">{idx + 1}</span>
+                        <span className="text-xs font-bold text-white group-hover:text-gold transition-colors">{m.symbol}</span>
+                      </div>
+                      <span className={`text-xs font-bold px-2 py-0.5 rounded ${m.up ? 'text-signal-green bg-signal-greenLight' : 'text-signal-red bg-signal-redLight'}`}>
+                        {m.change}
+                      </span>
+                    </Link>
+                  ))}
+                </div>
               </div>
             </div>
           </div>

@@ -7,7 +7,7 @@ export default function MiniSparkline({ trend = 'up', className = '' }) {
     : 'M0,12 L10,14 L20,11 L30,13 L40,12 L50,11 L60,13 L70,12';
   return (
     <svg viewBox="0 0 70 24" className={`w-16 h-6 ${className}`} preserveAspectRatio="none">
-      <path d={path} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      <path d={path} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" opacity="0.8" />
     </svg>
   );
 }

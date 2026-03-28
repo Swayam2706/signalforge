@@ -103,11 +103,15 @@ export default function StockSearch() {
 
   return (
     <div ref={containerRef} className="relative hidden sm:block">
-      {/* Input */}
-      <div className={`flex items-center bg-white/[0.04] border rounded-lg px-3 py-1.5 gap-2 transition-colors ${open ? 'border-gold/40' : 'border-surfaceBorder'}`}>
+      {/* Enhanced Input with premium styling */}
+      <div className={`flex items-center bg-white/[0.06] border rounded-xl px-3.5 py-2 gap-2.5 transition-all duration-200 ${
+        open 
+          ? 'border-gold/50 shadow-[0_0_0_3px_rgba(212,175,55,0.1)] bg-white/[0.08]' 
+          : 'border-white/[0.08] hover:border-white/[0.12] hover:bg-white/[0.08]'
+      }`}>
         {loading
-          ? <svg className="animate-spin text-gray-500 shrink-0" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56" /></svg>
-          : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-gray-500 shrink-0"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
+          ? <svg className="animate-spin text-gray-400 shrink-0" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56" /></svg>
+          : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-gray-400 shrink-0"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
         }
         <input
           ref={inputRef}
@@ -117,36 +121,36 @@ export default function StockSearch() {
           onKeyDown={handleKeyDown}
           onFocus={() => setOpen(true)}
           placeholder="Search stocks..."
-          className="bg-transparent text-sm text-gray-200 outline-none w-44 placeholder-gray-600"
+          className="bg-transparent text-sm text-white outline-none w-48 placeholder-gray-500 font-medium"
           autoComplete="off"
           spellCheck={false}
         />
         {query && (
           <button onClick={() => { setQuery(''); setResults([]); setOpen(false); }}
-            className="text-gray-600 hover:text-gray-400 transition-colors shrink-0">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6 6 18M6 6l12 12" /></svg>
+            className="text-gray-500 hover:text-gray-300 transition-colors shrink-0 p-0.5 rounded hover:bg-white/[0.08]">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6 6 18M6 6l12 12" /></svg>
           </button>
         )}
       </div>
 
-      {/* Dropdown */}
+      {/* Enhanced Dropdown */}
       {(showRecent || showResults) && (
-        <div className="absolute top-full right-0 mt-1.5 w-72 bg-[#0f0f13] border border-white/[0.08] rounded-xl shadow-[0_8px_40px_rgba(0,0,0,0.6)] z-50 overflow-hidden">
+        <div className="absolute top-full right-0 mt-2 w-80 bg-[#0f0f13]/98 border border-white/[0.12] rounded-xl shadow-[0_12px_48px_rgba(0,0,0,0.8)] backdrop-blur-xl z-50 overflow-hidden">
 
           {/* Recent searches */}
           {showRecent && (
             <div className="p-2">
-              <div className="text-[10px] text-gray-500 uppercase tracking-wider px-2 py-1.5 flex items-center justify-between">
-                <span>Recent</span>
+              <div className="text-[10px] text-gray-500 uppercase tracking-wider px-3 py-2 flex items-center justify-between">
+                <span className="font-semibold">Recent</span>
                 <button onClick={() => { setRecentSearches([]); sessionStorage.removeItem('sf_recent'); }}
-                  className="text-gray-600 hover:text-gray-400 text-[9px]">Clear</button>
+                  className="text-gray-600 hover:text-gray-400 text-[9px] font-medium">Clear</button>
               </div>
               {recentSearches.map(sym => (
                 <button key={sym} onClick={() => selectStock(sym)}
-                  className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg hover:bg-white/[0.05] transition-colors text-left group">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-gray-600 shrink-0"><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></svg>
-                  <span className="text-sm text-gray-300 font-mono">{sym}</span>
-                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-gray-600 ml-auto opacity-0 group-hover:opacity-100"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-white/[0.06] transition-all duration-150 text-left group">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-gray-500 shrink-0"><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></svg>
+                  <span className="text-sm text-gray-200 font-mono font-medium">{sym}</span>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-gray-600 ml-auto opacity-0 group-hover:opacity-100 transition-opacity"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
                 </button>
               ))}
             </div>
