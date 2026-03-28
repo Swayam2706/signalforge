@@ -293,7 +293,31 @@ export async function getTradeAlerts(userId) {
 
 export async function dbGetPortfolio(userId) {
   const data = await apiFetch(`/api/portfolio?user_id=${encodeURIComponent(userId)}`);
-  return data?.data ?? data;
+  const rawData = data?.data ?? data;
+  
+  // Transform backend snake_case to frontend camelCase
+  if (rawData && rawData.items) {
+    return {
+      ...rawData,
+      holdings: rawData.items.map(item => ({
+        id: item.id,
+        symbol: item.symbol,
+        company_name: item.company_name || item.symbol,
+        exchange: item.exchange || 'NSE',
+        quantity: item.quantity,
+        averagePrice: item.avg_price,
+        average_price: item.avg_price,
+        currentPrice: item.current_price,
+        changePercent: item.price_change_percent || 0,
+        signal: item.signal,
+        confidence: item.confidence,
+        trend: item.trend,
+        risk: item.risk,
+      }))
+    };
+  }
+  
+  return rawData;
 }
 
 /**
