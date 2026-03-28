@@ -162,7 +162,11 @@ export default function DashboardPage() {
   // CRITICAL FIX: Compute analytics dynamically from actual stocks data
   const analytics = useMemo(() => {
     if (!stocks || stocks.length === 0) {
-      return { buyVsSell: dashboardMetrics.buyVsSell, sectors: dashboardMetrics.sectors };
+      return { 
+        buyVsSell: dashboardMetrics.buyVsSell, 
+        sectors: dashboardMetrics.sectors,
+        counts: { buy: 0, sell: 0, hold: 0, total: 0 }
+      };
     }
 
     // Normalize signal values for consistent matching
@@ -191,6 +195,13 @@ export default function DashboardPage() {
       bear: Math.round((sellCount / total) * 100),
       mixed: Math.round((holdCount / total) * 100),
     };
+    
+    const counts = {
+      buy: buyCount,
+      sell: sellCount,
+      hold: holdCount,
+      total: stocks.length
+    };
 
     // Compute sector distribution from stocks
     const sectorCounts = {};
@@ -211,10 +222,10 @@ export default function DashboardPage() {
 
     // If no sectors found, use defaults
     if (Object.keys(sectors).length === 0) {
-      return { buyVsSell, sectors: dashboardMetrics.sectors };
+      return { buyVsSell, sectors: dashboardMetrics.sectors, counts };
     }
 
-    return { buyVsSell, sectors };
+    return { buyVsSell, sectors, counts };
   }, [stocks]);
 
   // CRITICAL FIX: Filter signals based on selected filter
@@ -397,18 +408,40 @@ export default function DashboardPage() {
                 <span className="text-[11px] uppercase tracking-wider text-gray-500 font-medium block mb-3">Signal Analytics</span>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="bg-white/[0.03] rounded-lg p-3 border border-white/5">
-                    <div className="text-[10px] text-gray-500 uppercase tracking-wider mb-2">Buy vs Sell</div>
-                    <div className="flex items-end gap-1.5 h-12">
+                    <div className="text-[10px] text-gray-500 uppercase tracking-wider mb-3">Buy vs Sell</div>
+                    
+                    {/* Bar Chart Visualization */}
+                    <div className="flex items-end gap-2 h-16 mb-3">
                       {[
-                        { h: analytics.buyVsSell.bull, color: 'bg-signal-green', label: 'Buy' },
-                        { h: analytics.buyVsSell.bear, color: 'bg-signal-red', label: 'Sell' },
-                        { h: analytics.buyVsSell.mixed, color: 'bg-gold', label: 'Hold' },
+                        { h: analytics.buyVsSell.bull, color: 'bg-signal-green', label: 'Buy', pct: analytics.buyVsSell.bull, count: analytics.counts.buy },
+                        { h: analytics.buyVsSell.bear, color: 'bg-signal-red', label: 'Sell', pct: analytics.buyVsSell.bear, count: analytics.counts.sell },
+                        { h: analytics.buyVsSell.mixed, color: 'bg-gold', label: 'Hold', pct: analytics.buyVsSell.mixed, count: analytics.counts.hold },
                       ].map(b => (
-                        <div key={b.label} className="flex-1 flex flex-col items-center gap-1">
-                          <div className={`w-full ${b.color} rounded-t`} style={{ height: `${b.h}%` }} />
-                          <span className="text-[9px] text-gray-500">{b.label}</span>
+                        <div key={b.label} className="flex-1 flex flex-col items-center gap-1.5">
+                          {/* Count and percentage label above bar */}
+                          <div className="text-center">
+                            <div className="text-[11px] font-bold text-white">{b.count}</div>
+                            <div className="text-[9px] text-gray-400">{b.pct}%</div>
+                          </div>
+                          
+                          {/* Bar with minimum height for visibility */}
+                          <div className="w-full relative" style={{ height: '32px' }}>
+                            <div 
+                              className={`absolute bottom-0 w-full ${b.color} rounded-t transition-all duration-500`} 
+                              style={{ height: `${Math.max(b.h, 8)}%` }}
+                            />
+                          </div>
+                          
+                          {/* Label below bar */}
+                          <span className="text-[9px] text-gray-400 font-medium">{b.label}</span>
                         </div>
                       ))}
+                    </div>
+                    
+                    {/* Summary Stats */}
+                    <div className="pt-2 border-t border-white/5 flex justify-between text-[9px]">
+                      <span className="text-gray-500">Total Signals</span>
+                      <span className="text-white font-semibold">{analytics.counts.total}</span>
                     </div>
                   </div>
                   <div className="bg-white/[0.03] rounded-lg p-3 border border-white/5">
