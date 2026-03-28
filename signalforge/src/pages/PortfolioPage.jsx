@@ -324,11 +324,25 @@ export default function PortfolioPage() {
   const portfolioInsights = useMemo(() => {
     if (dbHoldings.length === 0) return null;
 
-    // Top Performer
-    const topPerformer = [...dbHoldings].sort((a, b) => b.pnlPct - a.pnlPct)[0];
+    // Sort by P&L percentage for performance analysis
+    const sortedByPnl = [...dbHoldings].sort((a, b) => b.pnlPct - a.pnlPct);
     
-    // Worst Performer
-    const worstPerformer = [...dbHoldings].sort((a, b) => a.pnlPct - b.pnlPct)[0];
+    // Top Performer - best P&L, but must be different from worst
+    const topPerformer = sortedByPnl[0];
+    
+    // Worst Performer - worst P&L, ensure it's different from top
+    const worstPerformer = sortedByPnl.length > 1 ? sortedByPnl[sortedByPnl.length - 1] : sortedByPnl[0];
+    
+    // If all have same P&L, use absolute P&L amount as tiebreaker
+    let finalTop = topPerformer;
+    let finalWorst = worstPerformer;
+    
+    if (topPerformer.symbol === worstPerformer.symbol && dbHoldings.length > 1) {
+      // All have same P&L%, sort by absolute amount
+      const sortedByAmount = [...dbHoldings].sort((a, b) => b.pnl - a.pnl);
+      finalTop = sortedByAmount[0];
+      finalWorst = sortedByAmount[sortedByAmount.length - 1];
+    }
     
     // Largest Holding by value
     const largestHolding = [...dbHoldings].sort((a, b) => b.currentValue - a.currentValue)[0];
@@ -348,15 +362,18 @@ export default function PortfolioPage() {
       .slice(0, 3);
     
     // Portfolio AI Summary
-    const avgPnl = dbHoldings.reduce((sum, h) => sum + h.pnlPct, 0) / dbHoldings.length;
     const positiveCount = dbHoldings.filter(h => h.pnl > 0).length;
     const negativeCount = dbHoldings.filter(h => h.pnl < 0).length;
+    const neutralCount = dbHoldings.filter(h => h.pnl === 0).length;
     
     let aiSummary = '';
-    if (totalPnlPct > 5) {
+    if (neutralCount === dbHoldings.length) {
+      // All holdings at break-even
+      aiSummary = `Portfolio at break-even. ${dbHoldings.length} holdings tracking live prices. Market movement will update P&L in real-time.`;
+    } else if (totalPnlPct > 5) {
       aiSummary = `Strong portfolio performance with ${fmtPct(totalPnlPct)} gains. ${positiveCount} of ${dbHoldings.length} holdings are profitable.`;
     } else if (totalPnlPct > 0) {
-      aiSummary = `Portfolio showing modest gains at ${fmtPct(totalPnlPct)}. ${positiveCount} holdings in profit, ${negativeCount} need attention.`;
+      aiSummary = `Portfolio showing modest gains at ${fmtPct(totalPnlPct)}. ${positiveCount} holdings in profit${negativeCount > 0 ? `, ${negativeCount} need attention` : ''}.`;
     } else if (totalPnlPct > -5) {
       aiSummary = `Portfolio slightly down ${fmtPct(Math.abs(totalPnlPct))}. ${negativeCount} holdings underperforming, consider rebalancing.`;
     } else {
@@ -367,8 +384,8 @@ export default function PortfolioPage() {
     const concentrationRisk = largestHoldingPct > 40 ? 'High' : largestHoldingPct > 25 ? 'Medium' : 'Low';
     
     return {
-      topPerformer,
-      worstPerformer,
+      topPerformer: finalTop,
+      worstPerformer: finalWorst,
       largestHolding,
       largestHoldingPct,
       signalBreakdown,
@@ -704,26 +721,64 @@ export default function PortfolioPage() {
               </div>
               
               {/* Top Performer */}
-              <div className="bg-signal-green/[0.05] rounded-lg p-3 border border-signal-green/20 mb-3">
+              <div className={`rounded-lg p-3 border mb-3 ${
+                portfolioInsights.topPerformer.pnl > 0 
+                  ? 'bg-signal-green/[0.05] border-signal-green/20' 
+                  : portfolioInsights.topPerformer.pnl < 0
+                  ? 'bg-signal-red/[0.05] border-signal-red/20'
+                  : 'bg-white/[0.02] border-white/[0.05]'
+              }`}>
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs text-signal-green font-medium">Top Performer</span>
-                  <span className="text-xs text-signal-green font-bold">+{portfolioInsights.topPerformer.pnlPct.toFixed(2)}%</span>
+                  <span className={`text-xs font-medium ${
+                    portfolioInsights.topPerformer.pnl > 0 ? 'text-signal-green' : 
+                    portfolioInsights.topPerformer.pnl < 0 ? 'text-signal-red' : 'text-gray-400'
+                  }`}>Top Performer</span>
+                  <span className={`text-xs font-bold ${
+                    portfolioInsights.topPerformer.pnl > 0 ? 'text-signal-green' : 
+                    portfolioInsights.topPerformer.pnl < 0 ? 'text-signal-red' : 'text-gray-400'
+                  }`}>
+                    {portfolioInsights.topPerformer.pnlPct >= 0 ? '+' : ''}{portfolioInsights.topPerformer.pnlPct.toFixed(2)}%
+                  </span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-semibold text-white">{portfolioInsights.topPerformer.symbol}</span>
-                  <span className="text-xs text-signal-green">+{fmtPrice(portfolioInsights.topPerformer.pnl)}</span>
+                  <span className={`text-xs ${
+                    portfolioInsights.topPerformer.pnl > 0 ? 'text-signal-green' : 
+                    portfolioInsights.topPerformer.pnl < 0 ? 'text-signal-red' : 'text-gray-400'
+                  }`}>
+                    {portfolioInsights.topPerformer.pnl >= 0 ? '+' : ''}{fmtPrice(Math.abs(portfolioInsights.topPerformer.pnl))}
+                  </span>
                 </div>
               </div>
 
               {/* Worst Performer */}
-              <div className="bg-signal-red/[0.05] rounded-lg p-3 border border-signal-red/20">
+              <div className={`rounded-lg p-3 border ${
+                portfolioInsights.worstPerformer.pnl < 0 
+                  ? 'bg-signal-red/[0.05] border-signal-red/20' 
+                  : portfolioInsights.worstPerformer.pnl > 0
+                  ? 'bg-signal-green/[0.05] border-signal-green/20'
+                  : 'bg-white/[0.02] border-white/[0.05]'
+              }`}>
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs text-signal-red font-medium">Needs Attention</span>
-                  <span className="text-xs text-signal-red font-bold">{portfolioInsights.worstPerformer.pnlPct.toFixed(2)}%</span>
+                  <span className={`text-xs font-medium ${
+                    portfolioInsights.worstPerformer.pnl < 0 ? 'text-signal-red' : 
+                    portfolioInsights.worstPerformer.pnl > 0 ? 'text-signal-green' : 'text-gray-400'
+                  }`}>Needs Attention</span>
+                  <span className={`text-xs font-bold ${
+                    portfolioInsights.worstPerformer.pnl < 0 ? 'text-signal-red' : 
+                    portfolioInsights.worstPerformer.pnl > 0 ? 'text-signal-green' : 'text-gray-400'
+                  }`}>
+                    {portfolioInsights.worstPerformer.pnlPct >= 0 ? '+' : ''}{portfolioInsights.worstPerformer.pnlPct.toFixed(2)}%
+                  </span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-semibold text-white">{portfolioInsights.worstPerformer.symbol}</span>
-                  <span className="text-xs text-signal-red">{fmtPrice(portfolioInsights.worstPerformer.pnl)}</span>
+                  <span className={`text-xs ${
+                    portfolioInsights.worstPerformer.pnl < 0 ? 'text-signal-red' : 
+                    portfolioInsights.worstPerformer.pnl > 0 ? 'text-signal-green' : 'text-gray-400'
+                  }`}>
+                    {portfolioInsights.worstPerformer.pnl >= 0 ? '+' : ''}{fmtPrice(Math.abs(portfolioInsights.worstPerformer.pnl))}
+                  </span>
                 </div>
               </div>
             </div>
