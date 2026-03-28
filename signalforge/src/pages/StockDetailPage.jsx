@@ -2,9 +2,7 @@ import { useParams, Link } from 'react-router-dom';
 import { useState, useMemo, useEffect, useRef } from 'react';
 import DashboardLayout from '../components/DashboardLayout';
 import TopBar from '../components/TopBar';
-import SignalBadge from '../components/SignalBadge';
 import ConfidenceMeter from '../components/ConfidenceMeter';
-import { getStockDetail as getMockStockDetail } from '../data/mockData';
 import { getStockDetail as fetchStockDetail, getFinnhubQuote, dbCreateAlert, getCachedDetail, getUnifiedChart } from '../services/api';
 import { transformStockDetail } from '../services/transforms';
 import { fmtPrice, fmtChange, fmtPct } from '../utils/currency';
@@ -197,11 +195,46 @@ export default function StockDetailPage() {
   // Finnhub WebSocket for live price ticks
   const { livePrice: wsTick, connected: wsConnected } = useFinnhubWS(symbol);
 
-  // Build the display data — use mock immediately, upgrade when live arrives
-  const baseData = liveData ? transformStockDetail(liveData) : mockData;
+  // Build the display data — show loading state if no live data yet
+  const baseData = liveData ? transformStockDetail(liveData) : null;
 
   // Price priority: WS tick > Finnhub quote > OHLC
   const d = useMemo(() => {
+    // If no base data yet, return minimal structure for loading state
+    if (!baseData) {
+      return {
+        symbol: symbol || '',
+        name: symbol || 'Loading...',
+        sector: 'Market',
+        price: 0,
+        change: 0,
+        changeAmt: 0,
+        signal: 'Hold',
+        confidence: 0,
+        volume: 'Loading...',
+        volumeChange: '',
+        momentum: '',
+        volatility: '',
+        iv: '',
+        dayHigh: null,
+        dayLow: null,
+        prevClose: null,
+        openPrice: null,
+        conclusion: 'Loading analysis...',
+        conclusionText: '',
+        timeHorizon: '',
+        targetPrice: '',
+        aiSummary: '',
+        aiExplanation: '',
+        confidenceDrivers: [],
+        contextInsights: [],
+        timeline: [],
+        risk: {},
+        warnings: [],
+        chartData: [],
+      };
+    }
+
     const result = { ...baseData };
 
     if (finnhubQuote && finnhubQuote.price > 0) {
@@ -252,7 +285,7 @@ export default function StockDetailPage() {
     }
 
     return result;
-  }, [baseData, finnhubQuote, wsTick, chartData]);
+  }, [baseData, finnhubQuote, wsTick, chartData, symbol]);
 
   // round2 must be defined BEFORE useMemo that uses it
   const round2 = (n) => Math.round(n * 100) / 100;
@@ -393,10 +426,39 @@ export default function StockDetailPage() {
     return insights.slice(0, 3);
   }, [d.dayHigh, d.dayLow, d.price, d.volumeChange, d.momentum, isBullish, liveData?.ohlc]);
 
-  // Key Levels - dynamic support/resistance
+  // Key Levels - dynamic support/resistance based on timeframe and chart data
   const keyLevels = useMemo(() => {
+    // Use chart data if available (timeframe-specific)
+    if (chartData && chartData.prices && chartData.prices.length >= 10) {
+      const prices = chartData.prices;
+      const sortedPrices = [...prices].sort((a, b) => b - a);
+      const highs = sortedPrices.slice(0, Math.ceil(prices.length * 0.1)); // Top 10%
+      const lows = sortedPrices.slice(-Math.ceil(prices.length * 0.1)); // Bottom 10%
+      
+      return {
+        resistance1: highs[Math.floor(highs.length / 3)] || d.price * 1.03,
+        resistance2: highs[0] || d.price * 1.05,
+        support1: lows[Math.floor(lows.length / 3)] || d.price * 0.97,
+        support2: lows[lows.length - 1] || d.price * 0.95,
+      };
+    }
+
+    // Fallback to OHLC data
     const ohlcData = liveData?.ohlc || [];
-    if (ohlcData.length < 10 || !d.price) {
+    if (ohlcData.length >= 10 && d.price) {
+      const highs = ohlcData.map(pt => pt.high).sort((a, b) => b - a);
+      const lows = ohlcData.map(pt => pt.low).sort((a, b) => a - b);
+      
+      return {
+        resistance1: highs[Math.floor(highs.length * 0.2)] || d.price * 1.03,
+        resistance2: highs[0] || d.price * 1.05,
+        support1: lows[Math.floor(lows.length * 0.2)] || d.price * 0.97,
+        support2: lows[0] || d.price * 0.95,
+      };
+    }
+
+    // Final fallback using day high/low
+    if (d.price) {
       return {
         resistance1: d.dayHigh || d.price * 1.03,
         resistance2: d.dayHigh ? d.dayHigh * 1.02 : d.price * 1.05,
@@ -405,16 +467,14 @@ export default function StockDetailPage() {
       };
     }
 
-    const highs = ohlcData.map(pt => pt.high).sort((a, b) => b - a);
-    const lows = ohlcData.map(pt => pt.low).sort((a, b) => a - b);
-    
+    // Loading state
     return {
-      resistance1: highs[0] || d.price * 1.03,
-      resistance2: highs[1] || d.price * 1.05,
-      support1: lows[0] || d.price * 0.97,
-      support2: lows[1] || d.price * 0.95,
+      resistance1: 0,
+      resistance2: 0,
+      support1: 0,
+      support2: 0,
     };
-  }, [liveData?.ohlc, d.price, d.dayHigh, d.dayLow]);
+  }, [chartData, liveData?.ohlc, d.price, d.dayHigh, d.dayLow, tf]);
 
   // Mini Trend Forecast
   const trendForecast = useMemo(() => {
@@ -539,10 +599,10 @@ export default function StockDetailPage() {
               <div className="glass-card rounded-2xl overflow-hidden">
                 <div className="flex flex-wrap items-center justify-between px-5 py-4 bg-white/[0.02] border-b border-surfaceBorder gap-4">
                   {[
-                    { label: 'Volume', value: d.volume, sub: d.volumeChange, color: 'emerald' },
-                    { label: 'Day High', value: d.dayHigh ? fmtPrice(d.dayHigh) : d.volume, sub: 'Today', color: 'emerald' },
-                    { label: 'Day Low', value: d.dayLow ? fmtPrice(d.dayLow) : d.momentum, sub: 'Today', color: isBullish ? 'emerald' : 'red' },
-                    { label: 'Prev Close', value: d.prevClose ? fmtPrice(d.prevClose) : d.volatility, sub: d.dayHigh ? 'Yesterday' : `${d.iv} IV`, color: 'blue' },
+                    { label: 'Volume', value: d.volume, sub: d.volumeChange || 'Today', color: 'emerald' },
+                    { label: 'Day High', value: d.dayHigh ? fmtPrice(d.dayHigh) : '—', sub: 'Today', color: 'emerald' },
+                    { label: 'Day Low', value: d.dayLow ? fmtPrice(d.dayLow) : '—', sub: 'Today', color: isBullish ? 'emerald' : 'red' },
+                    { label: 'Prev Close', value: d.prevClose ? fmtPrice(d.prevClose) : '—', sub: 'Yesterday', color: 'blue' },
                   ].map(m => (
                     <div key={m.label} className="min-w-[90px]">
                       <span className="text-[10px] text-gray-500 uppercase tracking-wider font-medium">{m.label}</span>
@@ -557,10 +617,10 @@ export default function StockDetailPage() {
                     </span>
                     <div className="flex flex-col">
                       <span className={`text-[10px] font-medium ${wsConnected ? 'text-emerald-400' : 'text-amber-400'}`}>
-                        {wsConnected ? 'Live prices active' : 'AI actively analyzing'}
+                        {wsConnected ? 'Live prices active' : 'AI analyzing'}
                       </span>
                       <span className="text-[9px] text-gray-500">
-                        {wsConnected ? `Finnhub WebSocket` : 'Processing 2.4M data points'}
+                        {wsConnected ? `Finnhub WebSocket` : `${symbol} market data`}
                       </span>
                     </div>
                   </div>
@@ -946,7 +1006,14 @@ export default function StockDetailPage() {
                   <div>
                     <div className="flex justify-between items-center mb-2">
                       <span className="text-[11px] text-gray-500 uppercase tracking-wider">Risk Level</span>
-                      <span className="text-xs font-semibold text-amber-400">Medium ({rr?.riskLevel ?? d.risk?.level ?? 50}%)</span>
+                      <span className={`text-xs font-semibold ${
+                        (rr?.riskLevel ?? d.risk?.level ?? 50) < 40 ? 'text-emerald-400' :
+                        (rr?.riskLevel ?? d.risk?.level ?? 50) < 65 ? 'text-amber-400' :
+                        'text-red-400'
+                      }`}>
+                        {(rr?.riskLevel ?? d.risk?.level ?? 50) < 40 ? 'Low' :
+                         (rr?.riskLevel ?? d.risk?.level ?? 50) < 65 ? 'Medium' : 'High'} ({rr?.riskLevel ?? d.risk?.level ?? 50}%)
+                      </span>
                     </div>
                     <div className="h-3 bg-surface rounded-full overflow-hidden relative">
                       <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/20 via-amber-400/20 to-red-500/20" />
