@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { useState, useMemo } from 'react';
 import DashboardLayout from '../components/DashboardLayout';
 import TopBar from '../components/TopBar';
 import SignalBadge from '../components/SignalBadge';
@@ -9,6 +10,9 @@ import { scanMarket, getLiveQuotes, getDashboardOverview } from '../services/api
 import { transformScanStock } from '../services/transforms';
 
 export default function DashboardPage() {
+  // Signal filter state
+  const [signalFilter, setSignalFilter] = useState('All');
+
   // Load scan data (signals + analysis) — refreshes every 5 min
   const { data: scanData } = useApi(
     () => scanMarket({ maxResults: 10 }),
@@ -53,13 +57,94 @@ export default function DashboardPage() {
 
   // Right panel data — live or fallback to mock
   const sentiment = overview?.marketSentiment || { score: dashboardMetrics.sentiment, label: dashboardMetrics.sentimentLabel, changeText: dashboardMetrics.techInflow + ' tech inflow' };
-  const analytics = overview?.signalAnalytics || { buyVsSell: dashboardMetrics.buyVsSell, sectors: dashboardMetrics.sectors };
   const topMovers = overview?.topMovers || dashboardMetrics.topMovers;
   const dataPoints = overview?.dataPoints || dashboardMetrics.dataPoints;
   const chartLine = sentiment.chartLine || "M0,50 L40,45 L80,42 L120,38 L160,32 L200,28 L240,22 L280,18 L300,15";
   const chartArea = sentiment.chartArea || (chartLine + " L300,70 L0,70 Z");
 
-  const activeSignals = stocks.slice(0, 5);
+  // CRITICAL FIX: Compute analytics dynamically from actual stocks data
+  const analytics = useMemo(() => {
+    if (!stocks || stocks.length === 0) {
+      return { buyVsSell: dashboardMetrics.buyVsSell, sectors: dashboardMetrics.sectors };
+    }
+
+    // Normalize signal values for consistent matching
+    const normalizeSignal = (signal) => {
+      const s = (signal || '').toLowerCase().trim();
+      if (s.includes('buy') || s === 'breakout' || s === 'momentum') return 'buy';
+      if (s.includes('sell') || s === 'risky') return 'sell';
+      return 'hold';
+    };
+
+    // Count buy/sell/hold signals
+    let buyCount = 0;
+    let sellCount = 0;
+    let holdCount = 0;
+
+    stocks.forEach(stock => {
+      const normalized = normalizeSignal(stock.signal);
+      if (normalized === 'buy') buyCount++;
+      else if (normalized === 'sell') sellCount++;
+      else holdCount++;
+    });
+
+    const total = stocks.length || 1;
+    const buyVsSell = {
+      bull: Math.round((buyCount / total) * 100),
+      bear: Math.round((sellCount / total) * 100),
+      mixed: Math.round((holdCount / total) * 100),
+    };
+
+    // Compute sector distribution from stocks
+    const sectorCounts = {};
+    stocks.forEach(stock => {
+      const sector = stock.sector || 'Other';
+      sectorCounts[sector] = (sectorCounts[sector] || 0) + 1;
+    });
+
+    // Get top 3 sectors
+    const sortedSectors = Object.entries(sectorCounts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3);
+
+    const sectors = {};
+    sortedSectors.forEach(([sector, count]) => {
+      sectors[sector] = Math.round((count / total) * 100);
+    });
+
+    // If no sectors found, use defaults
+    if (Object.keys(sectors).length === 0) {
+      return { buyVsSell, sectors: dashboardMetrics.sectors };
+    }
+
+    return { buyVsSell, sectors };
+  }, [stocks]);
+
+  // CRITICAL FIX: Filter signals based on selected filter
+  const filteredSignals = useMemo(() => {
+    if (!stocks || stocks.length === 0) return [];
+    
+    const normalizeSignal = (signal) => {
+      const s = (signal || '').toLowerCase().trim();
+      if (s.includes('buy') || s === 'breakout' || s === 'momentum') return 'buy';
+      if (s.includes('sell') || s === 'risky') return 'sell';
+      return 'hold';
+    };
+
+    if (signalFilter === 'All') {
+      return stocks.slice(0, 5);
+    }
+
+    const filterLower = signalFilter.toLowerCase();
+    const filtered = stocks.filter(stock => {
+      const normalized = normalizeSignal(stock.signal);
+      return normalized === filterLower;
+    });
+
+    return filtered.slice(0, 5);
+  }, [stocks, signalFilter]);
+
+  const activeSignals = filteredSignals;
   return (
     <DashboardLayout>
       <TopBar />
@@ -114,35 +199,51 @@ export default function DashboardPage() {
                 <div className="flex justify-between items-center mb-3">
                   <span className="text-[11px] uppercase tracking-wider text-gray-500 font-medium">Active Signals</span>
                   <div className="flex gap-1">
-                    {['All', 'Buy', 'Sell'].map((f, i) => (
-                      <span key={f} className={`px-2 py-1 rounded text-[11px] cursor-pointer transition-all ${i === 0 ? 'bg-white/10 text-white' : 'text-gray-500 hover:bg-white/5'}`}>{f}</span>
+                    {['All', 'Buy', 'Sell'].map((filter) => (
+                      <button
+                        key={filter}
+                        onClick={() => setSignalFilter(filter)}
+                        className={`px-2 py-1 rounded text-[11px] cursor-pointer transition-all ${
+                          signalFilter === filter
+                            ? 'bg-white/10 text-white'
+                            : 'text-gray-500 hover:bg-white/5'
+                        }`}
+                      >
+                        {filter}
+                      </button>
                     ))}
                   </div>
                 </div>
                 <div className="space-y-2">
-                  {activeSignals.map(s => (
-                    <Link key={s.symbol} to={`/stock/${s.symbol}`}
-                      className="glass-card rounded-xl p-3 flex items-center gap-4 cursor-pointer hover:translate-x-0.5 transition-all group">
-                      <div className={`w-9 h-9 rounded-lg flex items-center justify-center font-semibold text-sm ${
-                        s.signal === 'Buy' || s.signal === 'Strong Buy' ? 'bg-signal-greenLight text-signal-green' :
-                        s.signal === 'Sell' ? 'bg-signal-redLight text-signal-red' : 'bg-white/5 text-white'
-                      }`}>{s.logo}</div>
-                      <div className="flex-1 min-w-0">
-                        <div className="font-semibold text-sm">{s.name.split(' ')[0]}</div>
-                        <div className="text-[11px] text-gray-500">{s.symbol} <span className={s.change >= 0 ? 'text-signal-green' : 'text-signal-red'}>
-                          {s.change >= 0 ? '↑' : '↓'} {s.change >= 0 ? '+' : ''}{s.change}%
-                        </span></div>
-                      </div>
-                      <MiniSparkline trend={s.change >= 0 ? 'up' : 'down'} />
-                      <SignalBadge signal={s.signal} />
-                      <span className="text-[11px] text-gray-500 font-medium w-8 text-right">{s.confidence}%</span>
-                      <button className={`text-xs px-3 py-1.5 rounded-md font-medium transition-colors ${
-                        s.signal === 'Buy' || s.signal === 'Strong Buy' ? 'bg-gold/10 text-gold hover:bg-gold/20' : 'bg-white/5 text-gray-400 hover:bg-white/10'
-                      }`}>
-                        {s.signal === 'Sell' ? 'Monitor' : 'Review'}
-                      </button>
-                    </Link>
-                  ))}
+                  {activeSignals.length > 0 ? (
+                    activeSignals.map(s => (
+                      <Link key={s.symbol} to={`/stock/${s.symbol}`}
+                        className="glass-card rounded-xl p-3 flex items-center gap-4 cursor-pointer hover:translate-x-0.5 transition-all group">
+                        <div className={`w-9 h-9 rounded-lg flex items-center justify-center font-semibold text-sm ${
+                          s.signal === 'Buy' || s.signal === 'Strong Buy' || s.signal === 'Breakout' || s.signal === 'Momentum' ? 'bg-signal-greenLight text-signal-green' :
+                          s.signal === 'Sell' || s.signal === 'Risky' ? 'bg-signal-redLight text-signal-red' : 'bg-white/5 text-white'
+                        }`}>{s.logo}</div>
+                        <div className="flex-1 min-w-0">
+                          <div className="font-semibold text-sm">{s.name.split(' ')[0]}</div>
+                          <div className="text-[11px] text-gray-500">{s.symbol} <span className={s.change >= 0 ? 'text-signal-green' : 'text-signal-red'}>
+                            {s.change >= 0 ? '↑' : '↓'} {s.change >= 0 ? '+' : ''}{s.change}%
+                          </span></div>
+                        </div>
+                        <MiniSparkline trend={s.change >= 0 ? 'up' : 'down'} />
+                        <SignalBadge signal={s.signal} />
+                        <span className="text-[11px] text-gray-500 font-medium w-8 text-right">{s.confidence}%</span>
+                        <button className={`text-xs px-3 py-1.5 rounded-md font-medium transition-colors ${
+                          s.signal === 'Buy' || s.signal === 'Strong Buy' || s.signal === 'Breakout' || s.signal === 'Momentum' ? 'bg-gold/10 text-gold hover:bg-gold/20' : 'bg-white/5 text-gray-400 hover:bg-white/10'
+                        }`}>
+                          {s.signal === 'Sell' || s.signal === 'Risky' ? 'Monitor' : 'Review'}
+                        </button>
+                      </Link>
+                    ))
+                  ) : (
+                    <div className="glass-card rounded-xl p-6 text-center">
+                      <p className="text-sm text-gray-500">No {signalFilter.toLowerCase()} signals found</p>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
