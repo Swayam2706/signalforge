@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useUser } from '@clerk/clerk-react';
 import { Link } from 'react-router-dom';
 import { dbGetAlerts, dbDeleteAlert } from '../services/api';
@@ -9,7 +10,9 @@ export default function NotificationBell() {
   const [isOpen, setIsOpen] = useState(false);
   const [alerts, setAlerts] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, right: 0 });
   const dropdownRef = useRef(null);
+  const buttonRef = useRef(null);
 
   // Fetch alerts when dropdown opens
   useEffect(() => {
@@ -31,10 +34,26 @@ export default function NotificationBell() {
     }
   }, [isOpen, user?.id]);
 
+  // Update dropdown position when opened
+  useEffect(() => {
+    if (isOpen && buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      setDropdownPosition({
+        top: rect.bottom + 8,
+        right: window.innerWidth - rect.right,
+      });
+    }
+  }, [isOpen]);
+
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (e) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+      if (
+        dropdownRef.current && 
+        !dropdownRef.current.contains(e.target) &&
+        buttonRef.current &&
+        !buttonRef.current.contains(e.target)
+      ) {
         setIsOpen(false);
       }
     };
@@ -88,9 +107,10 @@ export default function NotificationBell() {
   const unreadCount = alerts.length;
 
   return (
-    <div ref={dropdownRef} className="relative">
+    <>
       {/* Bell Button */}
       <button 
+        ref={buttonRef}
         onClick={handleBellClick}
         className="relative p-2 rounded-lg text-gray-400 hover:text-white hover:bg-white/[0.06] transition-all duration-200 group"
         type="button"
@@ -107,11 +127,17 @@ export default function NotificationBell() {
         )}
       </button>
 
-      {/* Dropdown - Proper floating overlay */}
-      {isOpen && (
+      {/* Dropdown - Portal to body for proper z-index layering */}
+      {isOpen && createPortal(
         <div 
-          className="absolute top-full right-0 mt-2 w-80 bg-[#0f0f13] border border-white/[0.12] rounded-xl shadow-[0_20px_60px_rgba(0,0,0,0.9)] backdrop-blur-xl z-[10000] overflow-hidden animate-slideDown"
-          style={{ maxHeight: 'calc(100vh - 6rem)' }}
+          ref={dropdownRef}
+          className="fixed w-80 bg-[#0f0f13] border border-white/[0.12] rounded-xl shadow-[0_20px_60px_rgba(0,0,0,0.9)] backdrop-blur-xl overflow-hidden animate-slideDown"
+          style={{ 
+            top: `${dropdownPosition.top}px`,
+            right: `${dropdownPosition.right}px`,
+            maxHeight: 'calc(100vh - 6rem)',
+            zIndex: 99999,
+          }}
         >
           {/* Header */}
           <div className="px-4 py-3 border-b border-white/[0.08] flex items-center justify-between bg-white/[0.02] shrink-0">
@@ -259,9 +285,10 @@ export default function NotificationBell() {
               </div>
             )}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
-    </div>
+    </>
   );
 }
 
