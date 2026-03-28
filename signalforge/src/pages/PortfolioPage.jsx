@@ -220,7 +220,6 @@ export default function PortfolioPage() {
         currentValue,
       };
     });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [portfolioData?.holdings, livePrices]);
 
   const confirmedSymbols = new Set(dbHoldings.map(h => h.symbol));
