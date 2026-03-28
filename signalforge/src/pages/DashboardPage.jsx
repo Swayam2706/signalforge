@@ -473,13 +473,20 @@ export default function DashboardPage() {
                             <div className="text-[10px] text-gray-600 uppercase tracking-wider font-semibold">Confidence</div>
                             <div className="text-xs font-bold text-white">{s.confidence}%</div>
                           </div>
-                          <button className={`text-xs px-3.5 py-2 rounded-lg font-bold transition-all duration-200 border ${
-                            s.signal === 'Buy' || s.signal === 'Strong Buy' || s.signal === 'Breakout' || s.signal === 'Momentum' 
-                              ? 'bg-gold/10 text-gold hover:bg-gold/20 border-gold/30 hover:border-gold/50 shadow-[0_0_12px_rgba(212,175,55,0.1)]' 
-                              : 'bg-white/[0.06] text-gray-400 hover:bg-white/[0.1] border-white/[0.08] hover:border-white/[0.15]'
-                          }`}>
+                          <Link
+                            to={`/stock/${s.symbol}`}
+                            onMouseEnter={() => {
+                              // Prefetch stock data on hover for instant page load
+                              import('../services/api').then(({ prefetchStock }) => prefetchStock(s.symbol));
+                            }}
+                            className={`text-xs px-3.5 py-2 rounded-lg font-bold transition-all duration-200 border ${
+                              s.signal === 'Buy' || s.signal === 'Strong Buy' || s.signal === 'Breakout' || s.signal === 'Momentum' 
+                                ? 'bg-gold/10 text-gold hover:bg-gold/20 border-gold/30 hover:border-gold/50 shadow-[0_0_12px_rgba(212,175,55,0.1)]' 
+                                : 'bg-white/[0.06] text-gray-400 hover:bg-white/[0.1] border-white/[0.08] hover:border-white/[0.15]'
+                            }`}
+                          >
                             {s.signal === 'Sell' || s.signal === 'Risky' ? 'Monitor' : 'Review'}
-                          </button>
+                          </Link>
                         </div>
                       </Link>
                     ))
