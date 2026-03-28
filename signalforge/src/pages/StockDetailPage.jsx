@@ -58,10 +58,10 @@ function InteractiveChart({ chartData, chartApiData, timeframe, isBullish, curre
     });
     
     if (closestPoint && minDist < 50) {
-      // CRITICAL FIX: Use the price stored in the chart point itself, not from separate array
-      // Each chartData point already has the correct price from the API transformation
+      // CRITICAL FIX: Use the price and timestamp stored in the chart point itself
+      // Each chartData point has the correct price and timestamp from the API transformation
       const price = closestPoint.price || currentPrice;
-      const timestamp = chartApiData?.timestamps?.[closestPoint.idx];
+      const timestamp = closestPoint.timestamp;
       const prevPrice = closestPoint.idx > 0 ? (chartData[closestPoint.idx - 1]?.price || price) : price;
       const change = price - prevPrice;
       const changePct = prevPrice > 0 ? ((change / prevPrice) * 100) : 0;
@@ -388,9 +388,11 @@ export default function StockDetailPage() {
       .then(data => {
         if (mountedRef.current && data) {
           console.log(`[Chart] Received ${tf} data:`, {
-            dataPoints: data.prices?.length || 0,
-            priceRange: data.prices ? `${Math.min(...data.prices).toFixed(2)} - ${Math.max(...data.prices).toFixed(2)}` : 'N/A',
-            timestamps: data.timestamps?.length || 0
+            dataPoints: data.ohlc?.length || 0,
+            priceRange: data.ohlc?.length > 0 ? `${Math.min(...data.ohlc.map(p => p.close)).toFixed(2)} - ${Math.max(...data.ohlc.map(p => p.close)).toFixed(2)}` : 'N/A',
+            firstClose: data.ohlc?.[0]?.close,
+            lastClose: data.ohlc?.[data.ohlc.length - 1]?.close,
+            source: data.source
           });
           setChartData(data);
         }
@@ -465,9 +467,11 @@ export default function StockDetailPage() {
     }
 
     // Use dynamic chart data from API based on timeframe
-    if (chartData && chartData.timestamps && chartData.prices) {
-      // Transform API chart data to SVG coordinates
-      const prices = chartData.prices;
+    if (chartData && chartData.ohlc && chartData.ohlc.length > 0) {
+      // Extract prices and timestamps from OHLC data
+      const prices = chartData.ohlc.map(point => point.close);
+      const timestamps = chartData.ohlc.map(point => new Date(point.timestamp).getTime() / 1000);
+      
       const minPrice = Math.min(...prices);
       const maxPrice = Math.max(...prices);
       const priceRange = maxPrice - minPrice || 1;
@@ -483,7 +487,7 @@ export default function StockDetailPage() {
         const x = (idx / (prices.length - 1 || 1)) * 800;
         const normalizedPrice = (price - minPrice) / priceRange;
         const y = 280 - (normalizedPrice * 260); // Invert Y and add padding
-        return { x, y, price };
+        return { x, y, price, timestamp: timestamps[idx] };
       });
 
       result.chartData = chartPoints;
