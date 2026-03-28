@@ -38,8 +38,31 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 DEFAULT_STOCKS = [
+    # Large Cap - Banking & Financial Services
     'RELIANCE.NS', 'TCS.NS', 'HDFCBANK.NS', 'INFY.NS', 'HINDUNILVR.NS',
-    'ICICIBANK.NS', 'KOTAKBANK.NS', 'SBIN.NS', 'BAJFINANCE.NS', 'BHARTIARTL.NS'
+    'ICICIBANK.NS', 'KOTAKBANK.NS', 'SBIN.NS', 'BAJFINANCE.NS', 'BHARTIARTL.NS',
+    
+    # Large Cap - IT & Technology
+    'WIPRO.NS', 'HCLTECH.NS', 'TECHM.NS', 'LTI.NS', 'MPHASIS.NS',
+    
+    # Large Cap - Automotive & Manufacturing
+    'MARUTI.NS', 'TATAMOTORS.NS', 'M&M.NS', 'BAJAJ-AUTO.NS', 'HEROMOTOCO.NS',
+    
+    # Large Cap - Pharma & Healthcare
+    'SUNPHARMA.NS', 'DRREDDY.NS', 'CIPLA.NS', 'DIVISLAB.NS', 'APOLLOHOSP.NS',
+    
+    # Large Cap - Consumer & Retail
+    'ITC.NS', 'ASIANPAINT.NS', 'NESTLEIND.NS', 'BRITANNIA.NS', 'TITAN.NS',
+    
+    # Large Cap - Infrastructure & Industrials
+    'LT.NS', 'ULTRACEMCO.NS', 'ADANIPORTS.NS', 'POWERGRID.NS', 'NTPC.NS',
+    
+    # Large Cap - Metals & Mining
+    'HINDALCO.NS', 'TATASTEEL.NS', 'JSWSTEEL.NS', 'COALINDIA.NS', 'VEDL.NS',
+    
+    # Mid Cap - High Growth
+    'ADANIENT.NS', 'INDIGO.NS', 'GRASIM.NS', 'ONGC.NS', 'BPCL.NS',
+    'EICHERMOT.NS', 'SHREECEM.NS', 'PIDILITIND.NS', 'HAVELLS.NS', 'DABUR.NS'
 ]
 
 # Stock universe for instant search — no I/O, pure in-memory
@@ -186,7 +209,7 @@ async def search_stocks(q: str = Query(default="", min_length=1)):
 @app.get("/scan")
 async def market_scan(
     stocks: Optional[str] = None,
-    max_results: int = Query(default=10, ge=1, le=20),
+    max_results: int = Query(default=10, ge=1, le=100),
     use_ai: bool = True,
 ):
     """Scan market for top opportunities using yfinance + signal pipeline."""

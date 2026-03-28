@@ -20,8 +20,9 @@ export default function DashboardPage() {
   const [showAllSignals, setShowAllSignals] = useState(false);
 
   // Load scan data (signals + analysis) — refreshes every 5 min
+  // Increased maxResults to 50 for broader signal universe
   const { data: scanData } = useApi(
-    () => scanMarket({ maxResults: 10 }),
+    () => scanMarket({ maxResults: 50 }),
     null, [], 300000
   );
 
