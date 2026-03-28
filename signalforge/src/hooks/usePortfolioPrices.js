@@ -31,23 +31,12 @@ export function usePortfolioPrices(symbols = []) {
   // ── REST batch fetch — uses symbolKey directly, no stale closure ─────────
   const fetchBatch = useCallback(async (syms) => {
     if (!syms || !syms.length) return;
-    console.log('[usePortfolioPrices] Fetching batch prices for:', syms);
     try {
-      const url = `${BASE_URL}/api/portfolio/prices?symbols=${syms.join(',')}`;
-      console.log('[usePortfolioPrices] Fetch URL:', url);
-      const res = await fetch(url);
-      if (!res.ok) {
-        console.error('[usePortfolioPrices] Fetch failed with status:', res.status);
-        return;
-      }
+      const res = await fetch(`${BASE_URL}/api/portfolio/prices?symbols=${syms.join(',')}`);
+      if (!res.ok) return;
       const json = await res.json();
-      console.log('[usePortfolioPrices] API response:', json);
       const fresh = json?.data?.prices ?? json?.prices ?? {};
-      console.log('[usePortfolioPrices] Extracted prices:', fresh);
-      if (!mountedRef.current || !Object.keys(fresh).length) {
-        console.log('[usePortfolioPrices] No prices or unmounted, skipping update');
-        return;
-      }
+      if (!mountedRef.current || !Object.keys(fresh).length) return;
       setPrices(prev => {
         const next = { ...prev };
         for (const [sym, q] of Object.entries(fresh)) {
@@ -57,13 +46,10 @@ export function usePortfolioPrices(symbols = []) {
             prevPrice: prev[sym]?.price ?? q.price,
           };
         }
-        console.log('[usePortfolioPrices] Updated prices state:', next);
         return next;
       });
       setLastUpdated(new Date());
-    } catch (err) {
-      console.error('[usePortfolioPrices] Fetch error:', err);
-    }
+    } catch { /* keep last known */ }
   }, []); // no deps — uses argument, not closure
 
   // ── Poll every 15s — pass symbols as argument, no stale closure ─────────

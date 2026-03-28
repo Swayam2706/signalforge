@@ -171,57 +171,53 @@ export default function PortfolioPage() {
   );
   const { prices: livePrices, lastUpdated: pricesUpdatedAt, wsConnected } = usePortfolioPrices(dbSymbols);
 
-  // Debug: Log live prices when they update
-  useEffect(() => {
-    if (Object.keys(livePrices).length > 0) {
-      console.log('[Portfolio] Live prices updated:', livePrices, 'at', pricesUpdatedAt);
-    }
-  }, [livePrices, pricesUpdatedAt]);
-
   // ── Holdings — P&L computed from live prices ──────────────────────────────
   const dbHoldings = useMemo(() => {
-    console.log('[Portfolio] Recalculating dbHoldings. Portfolio data:', portfolioData?.holdings, 'Live prices:', livePrices);
-    
     return (portfolioData?.holdings || []).map(h => {
-      // Priority: livePrices (15s poll) > h.currentPrice (from /api/portfolio) > h.averagePrice (fallback)
+      // Get live price data
       const live = livePrices[h.symbol];
-      const avg = parseFloat(h.averagePrice || h.average_price || 0);
       
-      // CRITICAL FIX: Always have a valid price, use avg as last resort
-      let price = avg; // Start with average as fallback
+      // CRITICAL: Separate average buy price from current market price
+      const avgBuyPrice = parseFloat(h.averagePrice || h.average_price || h.avg_price || 0);
+      
+      // Determine current market price with priority:
+      // 1. Live price from WebSocket/polling (best, most current)
+      // 2. Backend-fetched current_price (good, from last portfolio load)
+      // 3. Average buy price as absolute fallback (prevents NaN but shows 0% P&L)
+      let currentMarketPrice = avgBuyPrice; // Fallback
+      
       if (live?.price > 0) {
-        price = live.price; // Best: live WebSocket/polling price
-        console.log(`[Portfolio] Using live price for ${h.symbol}: ${price}`);
+        currentMarketPrice = live.price; // Best: live data
       } else if (h.currentPrice > 0) {
-        price = h.currentPrice; // Good: backend-fetched current price
-        console.log(`[Portfolio] Using backend price for ${h.symbol}: ${price}`);
-      } else {
-        console.log(`[Portfolio] Using average price for ${h.symbol}: ${price}`);
+        currentMarketPrice = h.currentPrice; // Good: backend data
+      } else if (h.current_price > 0) {
+        currentMarketPrice = h.current_price; // Backend snake_case variant
       }
-      // If still zero, keep avg as fallback so calculations don't break
       
       const qty = parseFloat(h.quantity || 0);
-      const cost = qty * avg;
-      const currentValue = qty * price;
-      const pnl = cost > 0 ? currentValue - cost : 0;
-      const pnlPct = cost > 0 ? (pnl / cost) * 100 : 0;
-
-      console.log(`[Portfolio] ${h.symbol}: price=${price}, avg=${avg}, qty=${qty}, pnl=${pnl}, pnlPct=${pnlPct}%`);
+      
+      // CORRECT P&L FORMULAS
+      const investedValue = qty * avgBuyPrice;
+      const currentValue = qty * currentMarketPrice;
+      const pnlAmount = currentValue - investedValue;
+      const pnlPercent = avgBuyPrice > 0 ? ((currentMarketPrice - avgBuyPrice) / avgBuyPrice) * 100 : 0;
 
       return {
         symbol: h.symbol,
         name: h.company_name || h.symbol,
-        price,
-        prevPrice: live?.prevPrice ?? price,
+        price: currentMarketPrice,
+        prevPrice: live?.prevPrice ?? currentMarketPrice,
         shares: qty,
-        signal: price > avg * 1.005 ? 'Buy' : price < avg * 0.97 ? 'Sell' : 'Hold',
-        confidence: Math.min(90, Math.max(40, 50 + Math.round(pnlPct * 3))),
-        risk: Math.abs(pnlPct) > 10 ? 'High' : Math.abs(pnlPct) > 5 ? 'Medium' : 'Low',
-        change: live?.changePercent ?? h.changePercent ?? 0,
-        pnl: Math.round(pnl * 100) / 100,
-        pnlPct: Math.round(pnlPct * 100) / 100,
+        signal: currentMarketPrice > avgBuyPrice * 1.005 ? 'Buy' : currentMarketPrice < avgBuyPrice * 0.97 ? 'Sell' : 'Hold',
+        confidence: Math.min(90, Math.max(40, 50 + Math.round(pnlPercent * 3))),
+        risk: Math.abs(pnlPercent) > 10 ? 'High' : Math.abs(pnlPercent) > 5 ? 'Medium' : 'Low',
+        change: live?.changePercent ?? h.changePercent ?? h.price_change_percent ?? 0,
+        pnl: Math.round(pnlAmount * 100) / 100,
+        pnlPct: Math.round(pnlPercent * 100) / 100,
         id: h.id,
-        averagePrice: avg,
+        averagePrice: avgBuyPrice,
+        investedValue,
+        currentValue,
       };
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -243,30 +239,41 @@ export default function PortfolioPage() {
   const isEmpty = holdings.length === 0 && !loading && dataReceived;
 
   // ── Portfolio-level calculations ──────────────────────────────────────────
-  // Use live-enriched dbHoldings when available, fall back to backend totals
-  const totalValue = dbHoldings.length > 0
-    ? dbHoldings.reduce((s, h) => s + h.price * h.shares, 0)
-    : (portfolioData?.totalValue || 0);
-  const totalCost = dbHoldings.length > 0
-    ? dbHoldings.reduce((s, h) => s + h.averagePrice * h.shares, 0)
-    : (portfolioData?.totalCost || 0);
-  const totalPnl = totalValue - totalCost;
-  const totalPnlPct = totalCost > 0 ? (totalPnl / totalCost) * 100 : 0;
+  // ALWAYS calculate from live-enriched dbHoldings for accuracy
+  const totalValue = useMemo(() => 
+    dbHoldings.reduce((sum, h) => sum + h.currentValue, 0),
+    [dbHoldings]
+  );
+  
+  const totalCost = useMemo(() => 
+    dbHoldings.reduce((sum, h) => sum + h.investedValue, 0),
+    [dbHoldings]
+  );
+  
+  const totalPnl = useMemo(() => totalValue - totalCost, [totalValue, totalCost]);
+  
+  const totalPnlPct = useMemo(() => 
+    totalCost > 0 ? (totalPnl / totalCost) * 100 : 0,
+    [totalPnl, totalCost]
+  );
 
-  // Health score: base 60 + P&L factor + diversification bonus
-  const diversificationBonus = Math.min(15, holdings.length * 3);
-  const highRiskPenalty = holdings.filter(h => h.risk === 'High').length * 8;
-  const healthScore = isEmpty ? 0 : Math.min(95, Math.max(20,
-    60 + Math.round(totalPnlPct * 1.5) + diversificationBonus - highRiskPenalty
-  ));
+  // Health score: base 60 + P&L factor + diversification bonus - risk penalty
+  const healthScore = useMemo(() => {
+    if (isEmpty) return 0;
+    const diversificationBonus = Math.min(15, holdings.length * 3);
+    const highRiskPenalty = holdings.filter(h => h.risk === 'High').length * 8;
+    return Math.min(95, Math.max(20,
+      60 + Math.round(totalPnlPct * 1.5) + diversificationBonus - highRiskPenalty
+    ));
+  }, [isEmpty, holdings.length, totalPnlPct, holdings]);
 
-  const riskLevel = (() => {
+  const riskLevel = useMemo(() => {
     const high = holdings.filter(h => h.risk === 'High').length;
     const total = Math.max(holdings.length, 1);
     if (high / total > 0.5) return 'High';
     if (high / total > 0.2) return 'Medium';
     return 'Low';
-  })();
+  }, [holdings]);
 
   // Risk distribution by current value (not count) - fully dynamic with live prices
   const riskDistribution = useMemo(() => {
