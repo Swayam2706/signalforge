@@ -367,7 +367,6 @@ export default function PortfolioPage() {
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
               <div className="text-sm text-white font-medium">SignalForge AI</div>
-              <div className="text-base font-normal text-gray-400">Portfolio Analysis</div>
             </div>
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-purple-500/[0.08] border border-purple-500/15">
