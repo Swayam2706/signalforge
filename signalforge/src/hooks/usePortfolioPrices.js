@@ -62,6 +62,7 @@ export function usePortfolioPrices(symbols = []) {
 
     return () => {
       clearInterval(intervalRef.current);
+      // Note: do NOT set mountedRef.current = false here — WebSocket effect owns that
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [symbolKey]);

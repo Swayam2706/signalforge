@@ -118,21 +118,20 @@ export default function PortfolioPage() {
   );
 
   useEffect(() => {
-    if (portfolioData && !loading) {
-      // Only clear optimistic entries when real data confirms holdings exist
-      // or when the response explicitly says isEmpty (not on error/null)
-      if (portfolioData.holdings !== undefined) {
-        setOptimisticHoldings([]);
-      }
+    if (!loading && portfolioData?.holdings !== undefined) {
+      // Clear optimistic entries only when real DB response arrives with holdings field
+      setOptimisticHoldings([]);
       if ((portfolioData.holdings || []).length > 0) setHadHoldings(true);
     }
   }, [portfolioData, loading]);
 
   // ── Live price engine — WebSocket + 15s REST polling ─────────────────────
-  // Stable symbol list — only recomputes when holdings actually change
+  // Stable symbol key — only recomputes when symbol list actually changes
+  const symbolKey = (portfolioData?.holdings || []).map(h => h.symbol).sort().join(',');
   const dbSymbols = useMemo(
     () => (portfolioData?.holdings || []).map(h => h.symbol),
-    [portfolioData?.holdings] // eslint-disable-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [symbolKey]
   );
   const { prices: livePrices, lastUpdated: pricesUpdatedAt, wsConnected } = usePortfolioPrices(dbSymbols);
 
@@ -185,11 +184,17 @@ export default function PortfolioPage() {
     }));
 
   const holdings = [...dbHoldings, ...pendingOptimistic];
-  const isEmpty = holdings.length === 0 && (!portfolioData || portfolioData.isEmpty);
+  // isEmpty only when we have no holdings at all — not based on portfolioData being null
+  const isEmpty = holdings.length === 0 && !loading;
 
   // ── Portfolio-level calculations ──────────────────────────────────────────
-  const totalValue = dbHoldings.reduce((s, h) => s + h.price * h.shares, 0) || portfolioData?.totalValue || 0;
-  const totalCost = dbHoldings.reduce((s, h) => s + h.averagePrice * h.shares, 0) || portfolioData?.totalCost || 0;
+  // Use live-enriched dbHoldings when available, fall back to backend totals
+  const totalValue = dbHoldings.length > 0
+    ? dbHoldings.reduce((s, h) => s + h.price * h.shares, 0)
+    : (portfolioData?.totalValue || 0);
+  const totalCost = dbHoldings.length > 0
+    ? dbHoldings.reduce((s, h) => s + h.averagePrice * h.shares, 0)
+    : (portfolioData?.totalCost || 0);
   const totalPnl = totalValue - totalCost;
   const totalPnlPct = totalCost > 0 ? (totalPnl / totalCost) * 100 : 0;
 

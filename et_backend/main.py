@@ -207,7 +207,7 @@ async def market_scan(
 
         # 1. Fetch stock data from yfinance (in thread pool — non-blocking)
         import asyncio
-        stock_data = await asyncio.get_event_loop().run_in_executor(None, fetch_stock_data, stock_list)
+        stock_data = await asyncio.get_running_loop().run_in_executor(None, fetch_stock_data, stock_list)
 
         # 2. Build response directly from fetched data + simple scoring
         top_stocks = []
@@ -279,7 +279,7 @@ async def live_quotes(symbols: str = Query(default="RELIANCE,TCS,HDFCBANK,INFY,B
         from services.finnhub_service import get_batch_quotes
         import asyncio
         symbol_list = [s.strip().upper() for s in symbols.split(",") if s.strip()]
-        quotes = await asyncio.get_event_loop().run_in_executor(None, get_batch_quotes, symbol_list)
+        quotes = await asyncio.get_running_loop().run_in_executor(None, get_batch_quotes, symbol_list)
         return StandardResponse.success({
             "quotes": quotes,
             "count": len(quotes),
@@ -313,7 +313,7 @@ async def unified_quote(symbol: str):
     try:
         import asyncio
         from services.stock_provider import get_quote
-        result = await asyncio.get_event_loop().run_in_executor(None, get_quote, symbol)
+        result = await asyncio.get_running_loop().run_in_executor(None, get_quote, symbol)
         if result:
             return StandardResponse.success(result)
         return StandardResponse.error(f"No data for {symbol}", "NO_DATA")
@@ -336,7 +336,7 @@ async def unified_chart(
     try:
         import asyncio
         from services.stock_provider import get_chart
-        result = await asyncio.get_event_loop().run_in_executor(None, get_chart, symbol, period, interval)
+        result = await asyncio.get_running_loop().run_in_executor(None, get_chart, symbol, period, interval)
         if result:
             return StandardResponse.success(result)
         return StandardResponse.error(f"No chart data for {symbol}", "NO_DATA")
@@ -413,7 +413,7 @@ async def finnhub_quote(symbol: str):
                     continue
             return None
 
-        result = await asyncio.get_event_loop().run_in_executor(None, _yf_fetch)
+        result = await asyncio.get_running_loop().run_in_executor(None, _yf_fetch)
         if result:
             return StandardResponse.success(result)
 
@@ -889,9 +889,9 @@ async def api_get_portfolio(user_id: str = Query(..., description="Clerk user ID
                 "totalPnl": 0, "totalPnlPct": 0, "isEmpty": True,
             })
 
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
 
-        # Fetch ALL quotes in parallel — massive speedup vs sequential
+        # Fetch ALL quotes in parallel
         symbols = [h["symbol"] for h in holdings]
         quotes = await asyncio.gather(
             *[loop.run_in_executor(None, get_quote, sym) for sym in symbols],
@@ -910,7 +910,6 @@ async def api_get_portfolio(user_id: str = Query(..., description="Clerk user ID
             if isinstance(quote, Exception) or not quote:
                 price, change_pct = avg, 0.0
             else:
-                # Only fall back to avg if price is None/missing, not if it's 0
                 raw_price = quote.get("price")
                 price = raw_price if (raw_price is not None and raw_price > 0) else avg
                 change_pct = quote.get("changePercent", 0) or 0
@@ -967,7 +966,7 @@ async def api_portfolio_prices(symbols: str = Query(..., description="Comma-sepa
         if not sym_list:
             return StandardResponse.success({"prices": {}})
 
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         quotes = await asyncio.gather(
             *[loop.run_in_executor(None, get_quote, sym) for sym in sym_list],
             return_exceptions=True,
