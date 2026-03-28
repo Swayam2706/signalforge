@@ -12,6 +12,210 @@ import { useUser } from '@clerk/clerk-react';
 const timeframes = ['1D', '1W', '1M', '3M', '1Y'];
 
 /**
+ * Interactive Chart Component with Hover Tooltip
+ * Provides TradingView-style hover interaction
+ */
+function InteractiveChart({ chartData, chartApiData, timeframe, isBullish, currentPrice, symbol }) {
+  const [hoverPoint, setHoverPoint] = useState(null);
+  const [mousePos, setMousePos] = useState(null);
+  const svgRef = useRef(null);
+
+  const formatTimestamp = (timestamp, tf) => {
+    if (!timestamp) return '';
+    const date = new Date(timestamp * 1000);
+    
+    if (tf === '1D') {
+      return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+    } else if (tf === '1W') {
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    } else {
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    }
+  };
+
+  const handleMouseMove = (e) => {
+    if (!svgRef.current || !chartData || chartData.length === 0) return;
+    
+    const svg = svgRef.current;
+    const rect = svg.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    
+    // Convert mouse X to chart coordinate
+    const viewBoxWidth = Math.max(800, ...chartData.map(p => p.x + 20));
+    const chartX = (x / rect.width) * viewBoxWidth;
+    
+    // Find closest point
+    let closestPoint = null;
+    let minDist = Infinity;
+    
+    chartData.forEach((point, idx) => {
+      const dist = Math.abs(point.x - chartX);
+      if (dist < minDist) {
+        minDist = dist;
+        closestPoint = { ...point, idx };
+      }
+    });
+    
+    if (closestPoint && minDist < 50) {
+      // Get price and timestamp from API data if available
+      const price = chartApiData?.prices?.[closestPoint.idx] || closestPoint.price || currentPrice;
+      const timestamp = chartApiData?.timestamps?.[closestPoint.idx];
+      const prevPrice = closestPoint.idx > 0 ? (chartApiData?.prices?.[closestPoint.idx - 1] || price) : price;
+      const change = price - prevPrice;
+      const changePct = prevPrice > 0 ? ((change / prevPrice) * 100) : 0;
+      
+      setHoverPoint({
+        ...closestPoint,
+        price,
+        timestamp,
+        change,
+        changePct,
+      });
+      setMousePos({ x, y });
+    } else {
+      setHoverPoint(null);
+      setMousePos(null);
+    }
+  };
+
+  const handleMouseLeave = () => {
+    setHoverPoint(null);
+    setMousePos(null);
+  };
+
+  if (!chartData || chartData.length === 0) {
+    return (
+      <div className="w-full h-full flex items-center justify-center text-gray-500 text-sm">
+        No chart data available
+      </div>
+    );
+  }
+
+  const viewBoxWidth = Math.max(800, ...chartData.map(p => p.x + 20));
+  const lastPt = chartData[chartData.length - 1];
+  const linePath = chartData.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
+
+  return (
+    <div className="relative w-full h-full">
+      <svg 
+        ref={svgRef}
+        className="w-full h-full cursor-crosshair" 
+        viewBox={`0 0 ${viewBoxWidth} 300`} 
+        preserveAspectRatio="none"
+        onMouseMove={handleMouseMove}
+        onMouseLeave={handleMouseLeave}
+      >
+        <defs>
+          <linearGradient id="areaGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stopColor={isBullish ? '#10B981' : '#EF4444'} stopOpacity="0.25" />
+            <stop offset="100%" stopColor={isBullish ? '#10B981' : '#EF4444'} stopOpacity="0" />
+          </linearGradient>
+          <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+            <path d="M 40 0 L 0 0 0 40" fill="none" stroke="rgba(255,255,255,0.03)" strokeWidth="1" />
+          </pattern>
+        </defs>
+        
+        {/* Grid background */}
+        <rect width="100%" height="100%" fill="url(#grid)" />
+        
+        {/* Reference lines */}
+        <line x1="0" y1="220" x2={viewBoxWidth} y2="220" stroke="#6B7280" strokeWidth="1" strokeDasharray="4,4" />
+        <line x1="0" y1="95" x2={viewBoxWidth} y2="95" stroke="#F59E0B" strokeWidth="1.5" strokeDasharray="4,4" />
+        
+        {/* Area fill */}
+        <path d={linePath + ` L ${lastPt.x} 300 L 0 300 Z`} fill="url(#areaGrad)" />
+        
+        {/* Price line */}
+        <path 
+          d={linePath} 
+          fill="none" 
+          stroke={isBullish ? '#10B981' : '#EF4444'} 
+          strokeWidth="3" 
+          strokeLinecap="round"
+        >
+          <animate attributeName="stroke-dashoffset" from="2000" to="0" dur="1.5s" fill="freeze" />
+        </path>
+        
+        {/* Hover crosshair */}
+        {hoverPoint && (
+          <>
+            {/* Vertical line */}
+            <line 
+              x1={hoverPoint.x} 
+              y1="0" 
+              x2={hoverPoint.x} 
+              y2="300" 
+              stroke="rgba(255,255,255,0.3)" 
+              strokeWidth="1" 
+              strokeDasharray="4,4"
+            />
+            {/* Horizontal line */}
+            <line 
+              x1="0" 
+              y1={hoverPoint.y} 
+              x2={viewBoxWidth} 
+              y2={hoverPoint.y} 
+              stroke="rgba(255,255,255,0.3)" 
+              strokeWidth="1" 
+              strokeDasharray="4,4"
+            />
+            {/* Hover point */}
+            <circle 
+              cx={hoverPoint.x} 
+              cy={hoverPoint.y} 
+              r="6" 
+              fill={isBullish ? '#10B981' : '#EF4444'} 
+              stroke="#0A0A0A" 
+              strokeWidth="2"
+            />
+          </>
+        )}
+        
+        {/* Live price dot */}
+        <circle cx={lastPt.x} cy={lastPt.y} r="5" fill={isBullish ? '#10B981' : '#EF4444'} stroke="#0A0A0A" strokeWidth="2">
+          <animate attributeName="r" values="5;7;5" dur="2s" repeatCount="indefinite" />
+        </circle>
+        
+        {/* Live price label */}
+        <text x={lastPt.x + 10} y={lastPt.y - 8} fill={isBullish ? '#10B981' : '#EF4444'} fontSize="11" fontFamily="monospace" fontWeight="bold">
+          {currentPrice > 0 ? fmtPrice(currentPrice) : ''}
+        </text>
+      </svg>
+      
+      {/* Hover Tooltip */}
+      {hoverPoint && mousePos && (
+        <div 
+          className="absolute pointer-events-none z-50"
+          style={{
+            left: `${mousePos.x + 15}px`,
+            top: `${mousePos.y - 10}px`,
+            transform: mousePos.x > window.innerWidth / 2 ? 'translateX(-100%) translateX(-30px)' : 'none'
+          }}
+        >
+          <div className="bg-[#0f0f13] border border-white/[0.15] rounded-lg px-3 py-2 shadow-[0_8px_32px_rgba(0,0,0,0.6)] backdrop-blur-sm">
+            <div className="text-xs font-semibold text-white mb-1">{symbol}</div>
+            <div className="text-sm font-mono font-bold text-white mb-1">
+              {fmtPrice(hoverPoint.price)}
+            </div>
+            {hoverPoint.timestamp && (
+              <div className="text-[10px] text-gray-400 mb-1">
+                {formatTimestamp(hoverPoint.timestamp, timeframe)}
+              </div>
+            )}
+            {hoverPoint.change !== undefined && hoverPoint.change !== 0 && (
+              <div className={`text-[10px] font-medium ${hoverPoint.change >= 0 ? 'text-signal-green' : 'text-signal-red'}`}>
+                {hoverPoint.change >= 0 ? '+' : ''}{fmtPrice(hoverPoint.change)} ({hoverPoint.changePct >= 0 ? '+' : ''}{hoverPoint.changePct.toFixed(2)}%)
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
  * Compute risk/reward levels from real price data.
  * Uses ATR-style volatility estimate from OHLC closes.
  */
@@ -639,7 +843,7 @@ export default function StockDetailPage() {
                     ))}
                   </div>
                 </div>
-                <div className="relative w-full h-[300px] p-6">
+                <div className="relative w-full h-[300px] p-6" id="chart-container">
                   {(loadingDetail || loadingChart) && (
                     <div className="absolute inset-0 flex flex-col gap-3 p-6 z-10">
                       <div className="h-full rounded-xl bg-white/[0.03] animate-pulse flex items-center justify-center">
@@ -652,41 +856,16 @@ export default function StockDetailPage() {
                       </div>
                     </div>
                   )}
-                  <svg className="w-full h-full" viewBox={`0 0 ${Math.max(800, ...(d.chartData || []).map(p => p.x + 20))} 300`} preserveAspectRatio="none">
-                    <defs>
-                      <linearGradient id="areaGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-                        <stop offset="0%" stopColor={isBullish ? '#10B981' : '#EF4444'} stopOpacity="0.25" />
-                        <stop offset="100%" stopColor={isBullish ? '#10B981' : '#EF4444'} stopOpacity="0" />
-                      </linearGradient>
-                      <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
-                        <path d="M 40 0 L 0 0 0 40" fill="none" stroke="rgba(255,255,255,0.03)" strokeWidth="1" />
-                      </pattern>
-                    </defs>
-                    <rect width="100%" height="100%" fill="url(#grid)" />
-                    <line x1="0" y1="220" x2="800" y2="220" stroke="#6B7280" strokeWidth="1" strokeDasharray="4,4" />
-                    <line x1="0" y1="95" x2="800" y2="95" stroke="#F59E0B" strokeWidth="1.5" strokeDasharray="4,4" />
-                    {d.chartData && d.chartData.length > 1 && (() => {
-                      const lastX = d.chartData[d.chartData.length - 1].x;
-                      const lastPt = d.chartData[d.chartData.length - 1];
-                      const linePath = d.chartData.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
-                      return (
-                        <>
-                          <path d={linePath + ` L ${lastX} 300 L 0 300 Z`} fill="url(#areaGrad)" />
-                          <path d={linePath} fill="none" stroke={isBullish ? '#10B981' : '#EF4444'} strokeWidth="3" strokeLinecap="round">
-                            <animate attributeName="stroke-dashoffset" from="2000" to="0" dur="1.5s" fill="freeze" />
-                          </path>
-                          {/* Live price dot — pulses */}
-                          <circle cx={lastPt.x} cy={lastPt.y} r="5" fill={isBullish ? '#10B981' : '#EF4444'} stroke="#0A0A0A" strokeWidth="2">
-                            <animate attributeName="r" values="5;7;5" dur="2s" repeatCount="indefinite" />
-                          </circle>
-                          {/* Live price label */}
-                          <text x={lastPt.x + 10} y={lastPt.y - 8} fill={isBullish ? '#10B981' : '#EF4444'} fontSize="11" fontFamily="monospace" fontWeight="bold">
-                            {d.price > 0 ? fmtPrice(d.price) : ''}
-                          </text>
-                        </>
-                      );
-                    })()}
-                  </svg>
+                  
+                  {/* Interactive Chart with Hover */}
+                  <InteractiveChart 
+                    chartData={d.chartData}
+                    chartApiData={chartData}
+                    timeframe={tf}
+                    isBullish={isBullish}
+                    currentPrice={d.price}
+                    symbol={symbol}
+                  />
                 </div>
               </div>
 
