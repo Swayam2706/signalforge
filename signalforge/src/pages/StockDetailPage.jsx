@@ -286,6 +286,130 @@ export default function StockDetailPage() {
     return warnings;
   }, [d.confidence, d.momentum, d.volumeChange, d.dayHigh, d.price, isBullish, liveData?.ohlc]);
 
+  // AI Insight Summary - dynamic intelligent insights
+  const aiInsights = useMemo(() => {
+    const insights = [];
+    const ohlcCloses = liveData?.ohlc?.map(pt => pt.close) || [];
+    
+    // Trend analysis
+    if (ohlcCloses.length >= 5) {
+      const recent = ohlcCloses.slice(-5);
+      const isUptrend = recent.every((val, i) => i === 0 || val >= recent[i - 1]);
+      const isDowntrend = recent.every((val, i) => i === 0 || val <= recent[i - 1]);
+      
+      if (isUptrend) {
+        insights.push('Stock is in short-term uptrend with consistent higher lows');
+      } else if (isDowntrend) {
+        insights.push('Stock is in short-term downtrend with weak momentum');
+      } else {
+        insights.push('Stock is consolidating in sideways range — awaiting directional catalyst');
+      }
+    }
+
+    // Resistance/Support analysis
+    if (d.dayHigh && d.dayLow && d.price) {
+      const range = d.dayHigh - d.dayLow;
+      const position = (d.price - d.dayLow) / range;
+      if (position > 0.85) {
+        insights.push(`Resistance near ${fmtPrice(d.dayHigh)}, breakout needed for bullish continuation`);
+      } else if (position < 0.15) {
+        insights.push(`Support near ${fmtPrice(d.dayLow)}, bounce expected if level holds`);
+      }
+    }
+
+    // Volume analysis
+    if (d.volumeChange) {
+      const volChange = parseFloat(d.volumeChange.replace(/[^0-9.-]/g, ''));
+      if (volChange > 50) {
+        insights.push('High volume surge indicates strong institutional interest');
+      } else if (volChange < -30) {
+        insights.push('Volume decline suggests weakening conviction — monitor for reversal');
+      }
+    }
+
+    // Momentum + Signal alignment
+    if (d.momentum) {
+      const mom = parseFloat(d.momentum);
+      if (isBullish && mom > 70) {
+        insights.push('Strong momentum aligns with buy signal — favorable risk/reward setup');
+      } else if (isBullish && mom < 40) {
+        insights.push('Momentum divergence detected — wait for confirmation before entry');
+      }
+    }
+
+    // Fallback
+    if (insights.length === 0) {
+      insights.push('Analyzing market structure and price action patterns...');
+      insights.push('Monitoring for high-probability entry opportunities');
+    }
+
+    return insights.slice(0, 3);
+  }, [d.dayHigh, d.dayLow, d.price, d.volumeChange, d.momentum, isBullish, liveData?.ohlc]);
+
+  // Key Levels - dynamic support/resistance
+  const keyLevels = useMemo(() => {
+    const ohlcData = liveData?.ohlc || [];
+    if (ohlcData.length < 10 || !d.price) {
+      return {
+        resistance1: d.dayHigh || d.price * 1.03,
+        resistance2: d.dayHigh ? d.dayHigh * 1.02 : d.price * 1.05,
+        support1: d.dayLow || d.price * 0.97,
+        support2: d.dayLow ? d.dayLow * 0.98 : d.price * 0.95,
+      };
+    }
+
+    const highs = ohlcData.map(pt => pt.high).sort((a, b) => b - a);
+    const lows = ohlcData.map(pt => pt.low).sort((a, b) => a - b);
+    
+    return {
+      resistance1: highs[0] || d.price * 1.03,
+      resistance2: highs[1] || d.price * 1.05,
+      support1: lows[0] || d.price * 0.97,
+      support2: lows[1] || d.price * 0.95,
+    };
+  }, [liveData?.ohlc, d.price, d.dayHigh, d.dayLow]);
+
+  // Mini Trend Forecast
+  const trendForecast = useMemo(() => {
+    let trend = 'Neutral';
+    let confidence = 50;
+    
+    if (isBullish && d.confidence > 70) {
+      trend = 'Bullish';
+      confidence = d.confidence;
+    } else if (!isBullish && d.confidence > 70) {
+      trend = 'Bearish';
+      confidence = d.confidence;
+    } else if (d.confidence >= 50) {
+      trend = 'Neutral';
+      confidence = d.confidence;
+    }
+
+    return { trend, confidence };
+  }, [isBullish, d.confidence]);
+
+  // Volume & Momentum Snapshot
+  const volumeMomentum = useMemo(() => {
+    let volumeStatus = 'Normal';
+    let momentumStrength = 'Moderate';
+    let trendStrength = 50;
+
+    if (d.volumeChange) {
+      const volChange = parseFloat(d.volumeChange.replace(/[^0-9.-]/g, ''));
+      if (volChange > 50) volumeStatus = 'High';
+      else if (volChange < -30) volumeStatus = 'Low';
+    }
+
+    if (d.momentum) {
+      const mom = parseFloat(d.momentum);
+      if (mom > 70) momentumStrength = 'Strong';
+      else if (mom < 40) momentumStrength = 'Weak';
+      trendStrength = Math.min(100, Math.max(0, mom));
+    }
+
+    return { volumeStatus, momentumStrength, trendStrength };
+  }, [d.volumeChange, d.momentum]);
+
   const handleSetupAlert = async () => {
     if (rr?.isHold || !rr || !d.price) return;
     setAlertState('loading');
@@ -361,9 +485,9 @@ export default function StockDetailPage() {
             </div>
           </header>
 
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            {/* Left */}
-            <div className="lg:col-span-8 space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Left - Main Analysis Column (2/3 width) */}
+            <div className="lg:col-span-2 space-y-6">
               {/* Metrics Bar */}
               <div className="glass-card rounded-2xl overflow-hidden">
                 <div className="flex flex-wrap items-center justify-between px-5 py-4 bg-white/[0.02] border-b border-surfaceBorder gap-4">
@@ -509,10 +633,176 @@ export default function StockDetailPage() {
                 </div>
                 )}
               </div>
+
+              {/* AI Insight Summary - NEW PREMIUM SECTION */}
+              <div className="glass-card rounded-2xl p-6 border border-purple-500/20 bg-gradient-to-br from-purple-500/5 via-transparent to-blue-500/5 relative overflow-hidden group">
+                <div className="absolute -right-16 -top-16 w-40 h-40 bg-purple-500/10 rounded-full blur-3xl group-hover:blur-2xl transition-all duration-700" />
+                <div className="relative z-10">
+                  <div className="flex items-center justify-between mb-5">
+                    <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500/20 to-blue-500/20 flex items-center justify-center border border-purple-500/30">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-purple-400">
+                          <path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h-1.73c.34.6.73 1.26.73 2a2 2 0 0 1-2 2c-.74 0-1.39-.4-1.73-1H14v1.27c.6.34 1 .99 1 1.73a2 2 0 0 1-2 2 2 2 0 0 1-2-2c0-.74.4-1.39 1-1.73V16H9.73A2 2 0 0 1 8 17a2 2 0 0 1-2-2c0-.74.4-1.39 1-1.73H6a7 7 0 0 1 7-7h1V5.73A2 2 0 0 1 13 4a2 2 0 0 1-1-2z" />
+                        </svg>
+                      </div>
+                      <span>AI Insight Summary</span>
+                    </h3>
+                    <span className="px-2 py-1 rounded-full bg-purple-500/10 border border-purple-500/30 text-purple-400 text-[10px] font-semibold flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-purple-500 animate-pulse" />
+                      Live Analysis
+                    </span>
+                  </div>
+                  <div className="space-y-3">
+                    {aiInsights.map((insight, idx) => (
+                      <div key={idx} className="flex items-start gap-3 p-3 rounded-lg bg-surface/40 border border-white/5 hover:border-purple-500/30 transition-all duration-300 group/item">
+                        <div className="mt-0.5 w-6 h-6 rounded-md bg-purple-500/10 flex items-center justify-center shrink-0 border border-purple-500/20 group-hover/item:bg-purple-500/20 transition-colors">
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-purple-400">
+                            <path d="m5 12 5 5L20 7" />
+                          </svg>
+                        </div>
+                        <p className="text-sm text-gray-300 leading-relaxed">{insight}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Key Levels - NEW PREMIUM SECTION */}
+              <div className="glass-card rounded-2xl p-6">
+                <h3 className="text-lg font-semibold text-white mb-5 flex items-center gap-2">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-amber-400">
+                    <path d="M3 3v18h18" />
+                    <path d="M7 12h10" />
+                    <path d="M7 8h7" />
+                    <path d="M7 16h4" />
+                  </svg>
+                  Key Price Levels
+                </h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="p-4 rounded-xl bg-gradient-to-br from-red-500/10 to-red-500/5 border border-red-500/20 hover:border-red-500/40 transition-all duration-300 group">
+                    <div className="flex items-center gap-2 mb-3">
+                      <div className="w-2 h-2 rounded-full bg-red-500" />
+                      <span className="text-xs font-semibold text-red-400 uppercase tracking-wider">Resistance</span>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] text-gray-500">R2</span>
+                        <span className="text-sm font-bold text-white">{fmtPrice(keyLevels.resistance2)}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] text-gray-500">R1</span>
+                        <span className="text-sm font-bold text-white">{fmtPrice(keyLevels.resistance1)}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="p-4 rounded-xl bg-gradient-to-br from-emerald-500/10 to-emerald-500/5 border border-emerald-500/20 hover:border-emerald-500/40 transition-all duration-300 group">
+                    <div className="flex items-center gap-2 mb-3">
+                      <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                      <span className="text-xs font-semibold text-emerald-400 uppercase tracking-wider">Support</span>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] text-gray-500">S1</span>
+                        <span className="text-sm font-bold text-white">{fmtPrice(keyLevels.support1)}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] text-gray-500">S2</span>
+                        <span className="text-sm font-bold text-white">{fmtPrice(keyLevels.support2)}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Mini Trend Forecast + Volume Momentum - NEW PREMIUM SECTIONS */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Mini Trend Forecast */}
+                <div className="glass-card rounded-2xl p-5 border border-blue-500/20 bg-gradient-to-br from-blue-500/5 to-transparent">
+                  <h3 className="text-sm font-semibold text-gray-400 mb-4 flex items-center gap-2">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-blue-400">
+                      <path d="M3 3v18h18" />
+                      <path d="m19 9-5 5-4-4-3 3" />
+                    </svg>
+                    Short-Term Outlook
+                  </h3>
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-xs text-gray-500">Trend Direction</span>
+                    <span className={`px-3 py-1 rounded-full text-sm font-bold ${
+                      trendForecast.trend === 'Bullish' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' :
+                      trendForecast.trend === 'Bearish' ? 'bg-red-500/20 text-red-400 border border-red-500/30' :
+                      'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                    }`}>
+                      {trendForecast.trend === 'Bullish' ? '↗' : trendForecast.trend === 'Bearish' ? '↘' : '→'} {trendForecast.trend}
+                    </span>
+                  </div>
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs text-gray-500">Confidence</span>
+                      <span className="text-xs font-semibold text-white">{trendForecast.confidence}%</span>
+                    </div>
+                    <div className="h-2 bg-surface rounded-full overflow-hidden">
+                      <div 
+                        className={`h-full rounded-full transition-all duration-700 ${
+                          trendForecast.trend === 'Bullish' ? 'bg-gradient-to-r from-emerald-600 to-emerald-400' :
+                          trendForecast.trend === 'Bearish' ? 'bg-gradient-to-r from-red-600 to-red-400' :
+                          'bg-gradient-to-r from-amber-600 to-amber-400'
+                        }`}
+                        style={{ width: `${trendForecast.confidence}%` }}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Volume & Momentum Snapshot */}
+                <div className="glass-card rounded-2xl p-5 border border-cyan-500/20 bg-gradient-to-br from-cyan-500/5 to-transparent">
+                  <h3 className="text-sm font-semibold text-gray-400 mb-4 flex items-center gap-2">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-cyan-400">
+                      <path d="M12 20V10" />
+                      <path d="M18 20V4" />
+                      <path d="M6 20v-4" />
+                    </svg>
+                    Market Activity
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-gray-500">Volume</span>
+                      <span className={`px-2 py-0.5 rounded text-xs font-semibold ${
+                        volumeMomentum.volumeStatus === 'High' ? 'bg-emerald-500/20 text-emerald-400' :
+                        volumeMomentum.volumeStatus === 'Low' ? 'bg-red-500/20 text-red-400' :
+                        'bg-gray-500/20 text-gray-400'
+                      }`}>
+                        {volumeMomentum.volumeStatus}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-gray-500">Momentum</span>
+                      <span className={`px-2 py-0.5 rounded text-xs font-semibold ${
+                        volumeMomentum.momentumStrength === 'Strong' ? 'bg-emerald-500/20 text-emerald-400' :
+                        volumeMomentum.momentumStrength === 'Weak' ? 'bg-red-500/20 text-red-400' :
+                        'bg-amber-500/20 text-amber-400'
+                      }`}>
+                        {volumeMomentum.momentumStrength}
+                      </span>
+                    </div>
+                    <div>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="text-xs text-gray-500">Trend Strength</span>
+                        <span className="text-xs font-semibold text-white">{volumeMomentum.trendStrength}/100</span>
+                      </div>
+                      <div className="h-2 bg-surface rounded-full overflow-hidden">
+                        <div 
+                          className="h-full bg-gradient-to-r from-cyan-600 to-cyan-400 rounded-full transition-all duration-700"
+                          style={{ width: `${volumeMomentum.trendStrength}%` }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
 
-            {/* Right Column */}
-            <div className="lg:col-span-4 space-y-6">
+            {/* Right Column - Action & Metrics (1/3 width) */}
+            <div className="lg:col-span-1 space-y-6">
               {/* Analysis Conclusion */}
               <div className="glass-card rounded-2xl p-6 border-t-[3px] border-t-gold relative overflow-hidden">
                 <div className="absolute -right-10 -top-10 w-32 h-32 bg-gold/10 rounded-full blur-2xl" />
