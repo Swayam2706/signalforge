@@ -17,10 +17,16 @@ export default function NotificationBell() {
       setLoading(true);
       dbGetAlerts(user.id)
         .then(data => {
+          console.log('[NotificationBell] Fetched alerts:', data);
           const alertsList = data?.alerts || data || [];
-          setAlerts(Array.isArray(alertsList) ? alertsList : []);
+          const alertsArray = Array.isArray(alertsList) ? alertsList : [];
+          console.log('[NotificationBell] Processed alerts:', alertsArray);
+          setAlerts(alertsArray);
         })
-        .catch(() => setAlerts([]))
+        .catch(err => {
+          console.error('[NotificationBell] Error fetching alerts:', err);
+          setAlerts([]);
+        })
         .finally(() => setLoading(false));
     }
   }, [isOpen, user?.id]);
@@ -46,7 +52,8 @@ export default function NotificationBell() {
       dbGetAlerts(user.id)
         .then(data => {
           const alertsList = data?.alerts || data || [];
-          setAlerts(Array.isArray(alertsList) ? alertsList : []);
+          const alertsArray = Array.isArray(alertsList) ? alertsList : [];
+          setAlerts(alertsArray);
         })
         .catch(() => {});
     };
@@ -71,14 +78,22 @@ export default function NotificationBell() {
     }
   };
 
+  const handleBellClick = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    console.log('[NotificationBell] Bell clicked, current state:', { isOpen, alertCount: alerts.length, userId: user?.id });
+    setIsOpen(!isOpen);
+  };
+
   const unreadCount = alerts.length;
 
   return (
     <div ref={dropdownRef} className="relative">
       {/* Bell Button */}
       <button 
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={handleBellClick}
         className="relative p-2 rounded-lg text-gray-400 hover:text-white hover:bg-white/[0.06] transition-all duration-200 group"
+        type="button"
       >
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="transition-transform group-hover:scale-110">
           <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
@@ -92,9 +107,9 @@ export default function NotificationBell() {
         )}
       </button>
 
-      {/* Dropdown */}
+      {/* Dropdown - with higher z-index */}
       {isOpen && (
-        <div className="absolute top-full right-0 mt-2 w-96 bg-[#0f0f13]/98 border border-white/[0.12] rounded-xl shadow-[0_12px_48px_rgba(0,0,0,0.8)] backdrop-blur-xl z-50 overflow-hidden">
+        <div className="absolute top-full right-0 mt-2 w-96 bg-[#0f0f13]/98 border border-white/[0.12] rounded-xl shadow-[0_12px_48px_rgba(0,0,0,0.8)] backdrop-blur-xl z-[9999] overflow-hidden">
           {/* Header */}
           <div className="px-4 py-3 border-b border-white/[0.08] flex items-center justify-between">
             <div>
