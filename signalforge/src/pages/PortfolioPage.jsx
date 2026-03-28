@@ -129,6 +129,15 @@ export default function PortfolioPage() {
     null, [user?.id], 30000
   );
 
+  // Track if we've ever received portfolio data (prevents empty state flash on initial load)
+  const [dataReceived, setDataReceived] = useState(false);
+  
+  useEffect(() => {
+    if (portfolioData !== null && portfolioData !== undefined) {
+      setDataReceived(true);
+    }
+  }, [portfolioData]);
+
   useEffect(() => {
     if (!loading && portfolioData?.holdings !== undefined) {
       const realHoldingsCount = (portfolioData.holdings || []).length;
@@ -211,8 +220,10 @@ export default function PortfolioPage() {
     }));
 
   const holdings = [...dbHoldings, ...pendingOptimistic];
-  // isEmpty only when we have no holdings at all — not based on portfolioData being null
-  const isEmpty = holdings.length === 0 && !loading;
+  
+  // CRITICAL FIX: Only show empty state after we've confirmed data was received
+  // This prevents the flash of empty state during initial load
+  const isEmpty = holdings.length === 0 && !loading && dataReceived;
 
   // ── Portfolio-level calculations ──────────────────────────────────────────
   // Use live-enriched dbHoldings when available, fall back to backend totals
@@ -311,8 +322,35 @@ export default function PortfolioPage() {
             </div>
           </div>
 
+          {/* ── Loading state ─────────────────────────────────────────────── */}
+          {loading && !dataReceived && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {[1, 2, 3, 4].map(i => (
+                  <div key={i} className="glass-card rounded-xl p-5 animate-pulse">
+                    <div className="h-3 bg-white/[0.05] rounded w-20 mb-3" />
+                    <div className="h-8 bg-white/[0.08] rounded w-32 mb-2" />
+                    <div className="h-3 bg-white/[0.04] rounded w-24" />
+                  </div>
+                ))}
+              </div>
+              <div className="glass-card rounded-xl overflow-hidden">
+                <div className="px-5 py-4 border-b border-surfaceBorder">
+                  <div className="h-4 bg-white/[0.05] rounded w-32 animate-pulse" />
+                </div>
+                <div className="p-5 space-y-3">
+                  {[1, 2, 3].map(i => (
+                    <div key={i} className="flex items-center gap-4 animate-pulse" style={{ animationDelay: `${i * 100}ms` }}>
+                      <div className="h-10 bg-white/[0.05] rounded flex-1" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* ── Empty state ───────────────────────────────────────────────── */}
-          {!loading && isEmpty && (
+          {isEmpty && (
             <div className="space-y-4">
               <div className="glass-card rounded-2xl overflow-hidden relative">
                 <div className="absolute inset-0 pointer-events-none overflow-hidden">
