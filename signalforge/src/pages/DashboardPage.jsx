@@ -123,8 +123,6 @@ export default function DashboardPage() {
     }));
   }, [overview, stocks]);
   
-  const dataPoints = overview?.dataPoints || dashboardMetrics.dataPoints;
-  
   // Generate dynamic sentiment chart based on timeframe and current stocks
   const sentimentChart = useMemo(() => {
     if (!stocks || stocks.length === 0) {
@@ -281,12 +279,6 @@ export default function DashboardPage() {
       <TopBar />
       <main className="flex-1 overflow-y-auto p-6 bg-gradient-to-br from-base via-base to-[#0d0d0f]">
         <div className="max-w-[1400px] mx-auto">
-          {/* Status */}
-          <div className="flex items-center gap-2.5 text-xs text-gray-400 mb-7 px-1">
-            <span className="live-dot" />
-            <span className="font-medium">Analyzing <span className="text-white font-semibold">{dataPoints}</span> data points in real-time</span>
-          </div>
-
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Left Column */}
             <div className="lg:col-span-2 space-y-6">
