@@ -86,11 +86,9 @@ function InteractiveChart({ chartData, chartApiData, timeframe, isBullish, curre
   };
 
   if (!chartData || chartData.length === 0) {
-    return (
-      <div className="w-full h-full flex items-center justify-center text-gray-500 text-sm">
-        No chart data available
-      </div>
-    );
+    // Return null during loading - parent will show loading state
+    // Only show empty message if we're not loading
+    return null;
   }
 
   const viewBoxWidth = Math.max(800, ...chartData.map(p => p.x + 20));
@@ -318,7 +316,7 @@ export default function StockDetailPage() {
   const [finnhubQuote, setFinnhubQuote] = useState(null);
   const [loadingDetail, setLoadingDetail] = useState(!getCachedDetail(symbol));
   const [chartData, setChartData] = useState(null);
-  const [loadingChart, setLoadingChart] = useState(false);
+  const [loadingChart, setLoadingChart] = useState(true); // Start as loading
   const [tf, setTf] = useState('1M');
   const mountedRef = useRef(true);
   const chartCacheRef = useRef(new Map()); // Cache chart data by timeframe
@@ -345,10 +343,12 @@ export default function StockDetailPage() {
           timestamps: cached.ohlc.map(pt => pt.timestamp),
         };
         setChartData(chartFromOhlc);
+        setLoadingChart(false); // Chart ready from cache
         chartCacheRef.current.set('1M', chartFromOhlc);
       }
     } else {
       setLoadingDetail(true);
+      setLoadingChart(true); // Ensure loading state is set
     }
 
     // CRITICAL FIX: Update state as EACH request completes (not waiting for all)
@@ -902,7 +902,8 @@ export default function StockDetailPage() {
                   </div>
                 </div>
                 <div className="relative w-full h-[300px] p-6" id="chart-container">
-                  {(loadingDetail || loadingChart) && (
+                  {(loadingDetail || loadingChart) ? (
+                    // Loading state - show clean loading UI
                     <div className="absolute inset-0 flex flex-col gap-3 p-6 z-10">
                       <div className="h-full rounded-xl bg-white/[0.03] animate-pulse flex items-center justify-center">
                         <div className="flex flex-col items-center gap-2">
@@ -913,17 +914,29 @@ export default function StockDetailPage() {
                         </div>
                       </div>
                     </div>
+                  ) : !d.chartData || d.chartData.length === 0 ? (
+                    // True empty state - only show if loading complete and no data
+                    <div className="h-full flex items-center justify-center">
+                      <div className="text-center">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="mx-auto mb-3 text-gray-600">
+                          <path d="M3 3v18h18" />
+                          <path d="m19 9-5 5-4-4-3 3" />
+                        </svg>
+                        <p className="text-sm text-gray-500 mb-1">No chart data available</p>
+                        <p className="text-xs text-gray-600">Try selecting a different timeframe</p>
+                      </div>
+                    </div>
+                  ) : (
+                    // Chart ready - render interactive chart
+                    <InteractiveChart 
+                      chartData={d.chartData}
+                      chartApiData={chartData}
+                      timeframe={tf}
+                      isBullish={isBullish}
+                      currentPrice={d.price}
+                      symbol={symbol}
+                    />
                   )}
-                  
-                  {/* Interactive Chart with Hover */}
-                  <InteractiveChart 
-                    chartData={d.chartData}
-                    chartApiData={chartData}
-                    timeframe={tf}
-                    isBullish={isBullish}
-                    currentPrice={d.price}
-                    symbol={symbol}
-                  />
                 </div>
               </div>
 
