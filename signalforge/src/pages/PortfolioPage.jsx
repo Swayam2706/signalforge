@@ -99,7 +99,6 @@ export default function PortfolioPage() {
       averagePrice: selectedStock.price || 1, pnl: 0, pnlPct: 0, changePercent: 0, _optimistic: true,
     };
     setOptimisticHoldings(prev => [...prev, newHolding]);
-    console.log('[Portfolio] Adding optimistic holding:', newHolding);
     resetModal(); setShowModal(false);
     try {
       const payload = { 
@@ -110,23 +109,17 @@ export default function PortfolioPage() {
         quantity: parseFloat(qty), 
         averagePrice: selectedStock.price || 1 
       };
-      console.log('[Portfolio] Submitting to backend:', payload);
       const result = await dbAddHolding(payload);
-      console.log('[Portfolio] Backend response:', result);
       
       // Wait a moment for DB commit, then refetch
-      console.log('[Portfolio] Waiting 300ms before refetch...');
       await new Promise(resolve => setTimeout(resolve, 300));
-      console.log('[Portfolio] Calling refetch...');
-      const refetchResult = await refetch();
-      console.log('[Portfolio] Refetch complete, result:', refetchResult);
+      await refetch();
     } catch (e) {
       console.error('[Portfolio] Add holding failed:', e);
       // Only remove optimistic entry if the INSERT itself failed
       setOptimisticHoldings(prev => prev.filter(h => h.id !== optimisticId));
     } finally { 
       setAddLoading(false); 
-      console.log('[Portfolio] Add stock flow complete');
     }
   };
 
@@ -137,14 +130,9 @@ export default function PortfolioPage() {
   );
 
   useEffect(() => {
-    console.log('[Portfolio] useEffect triggered - loading:', loading, 'portfolioData:', portfolioData, 'optimisticHoldings:', optimisticHoldings.length);
     if (!loading && portfolioData?.holdings !== undefined) {
       const realHoldingsCount = (portfolioData.holdings || []).length;
       const realSymbols = new Set((portfolioData.holdings || []).map(h => h.symbol));
-      const optimisticSymbols = optimisticHoldings.map(h => h.symbol);
-      
-      console.log('[Portfolio] Real holdings from DB:', realHoldingsCount, 'symbols:', Array.from(realSymbols));
-      console.log('[Portfolio] Optimistic holdings:', optimisticHoldings.length, 'symbols:', optimisticSymbols);
       
       // Check if all optimistic holdings are now in the real data
       const allOptimisticConfirmed = optimisticHoldings.every(opt => realSymbols.has(opt.symbol));
@@ -153,17 +141,12 @@ export default function PortfolioPage() {
         setHadHoldings(true);
         // Only clear optimistic if they're all confirmed in DB
         if (allOptimisticConfirmed || optimisticHoldings.length === 0) {
-          console.log('[Portfolio] All optimistic holdings confirmed in DB - clearing optimistic state');
           if (optimisticHoldings.length > 0) {
             setOptimisticHoldings([]);
           }
-        } else {
-          console.log('[Portfolio] Some optimistic holdings not yet in DB - keeping them');
         }
       } else if (optimisticHoldings.length === 0) {
-        console.log('[Portfolio] No holdings at all - truly empty');
-      } else {
-        console.log('[Portfolio] Keeping optimistic holdings - DB returned empty but we have optimistic');
+        // No holdings at all - truly empty
       }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -199,11 +182,6 @@ export default function PortfolioPage() {
     const currentValue = qty * price;
     const pnl = cost > 0 ? currentValue - cost : 0;
     const pnlPct = cost > 0 ? (pnl / cost) * 100 : 0;
-
-    // Debug: log when price equals avg (indicates stale data)
-    if (price === avg && avg > 0 && !live?.price) {
-      console.warn(`[Portfolio] ${h.symbol}: using averagePrice as fallback (${price}) — live price not yet loaded`);
-    }
 
     return {
       symbol: h.symbol,
