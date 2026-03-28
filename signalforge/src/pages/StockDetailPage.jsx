@@ -63,10 +63,16 @@ function computeRiskReward(price, signal, ohlcCloses, confidence) {
     riskLevel = Math.min(80, Math.round(riskPct * 10));
     rewardLevel = Math.min(85, Math.round(rewardPct * 5));
   } else {
-    // Hold — no directional trade setup
+    // Hold — show meaningful context instead of "no setup"
+    // Determine why we're holding based on volatility and confidence
+    let holdReason = 'Sideways trend';
+    if (atrPct < 0.01) holdReason = 'Low volatility — waiting for catalyst';
+    else if (atrPct > 0.05) holdReason = 'High volatility — waiting for stability';
+    else if (confFactor < 0.6) holdReason = 'Low conviction — monitoring for clarity';
+    
     return {
       entry: fmtPrice(price),
-      stopLoss: 'N/A',
+      stopLoss: 'Monitor',
       targetPrice: fmtPrice(Math.round(price * (1 + atrPct * 2))),
       riskAmt: '—',
       rewardAmt: '—',
@@ -74,7 +80,7 @@ function computeRiskReward(price, signal, ohlcCloses, confidence) {
       riskLevel: 30,
       rewardLevel: 40,
       rewardPct: Math.round(atrPct * 200 * 10) / 10,
-      action: 'Hold Position',
+      action: holdReason,
       isHold: true,
     };
   }
@@ -213,6 +219,72 @@ export default function StockDetailPage() {
     () => computeRiskReward(d.price, d.signal, ohlcCloses, d.confidence),
     [d.price, d.signal, d.confidence, ohlcCloses.length]
   );
+
+  // Generate dynamic warnings based on actual risk factors
+  const dynamicWarnings = useMemo(() => {
+    const warnings = [];
+    const ohlcCloses = liveData?.ohlc?.map(pt => pt.close) || [];
+    
+    // Calculate volatility
+    let atrPct = 0.02;
+    if (ohlcCloses.length >= 3) {
+      const diffs = [];
+      for (let i = 1; i < ohlcCloses.length; i++) {
+        diffs.push(Math.abs(ohlcCloses[i] - ohlcCloses[i - 1]) / ohlcCloses[i - 1]);
+      }
+      atrPct = diffs.reduce((a, b) => a + b, 0) / diffs.length;
+    }
+
+    // High volatility warning
+    if (atrPct > 0.04) {
+      warnings.push({
+        title: 'High Volatility Detected',
+        text: `Daily price swings averaging ${(atrPct * 100).toFixed(1)}% — position sizing critical`
+      });
+    }
+
+    // Low confidence warning
+    if (d.confidence < 65) {
+      warnings.push({
+        title: 'Lower Confidence Signal',
+        text: 'Mixed indicators suggest waiting for clearer confirmation before entry'
+      });
+    }
+
+    // Momentum warning for buy signals
+    if (isBullish && d.momentum && parseFloat(d.momentum) < 50) {
+      warnings.push({
+        title: 'Weak Momentum',
+        text: 'Uptrend may lack strength to sustain breakout — watch for volume confirmation'
+      });
+    }
+
+    // Volume warning
+    if (d.volumeChange && d.volumeChange.includes('-')) {
+      warnings.push({
+        title: 'Declining Volume',
+        text: 'Lower participation may signal weakening trend — monitor for reversal'
+      });
+    }
+
+    // Resistance/support warning based on price position
+    if (d.dayHigh && d.price && d.price > d.dayHigh * 0.98) {
+      warnings.push({
+        title: 'Near Resistance',
+        text: 'Price approaching day high — potential pullback zone'
+      });
+    }
+
+    // Default warning if none triggered
+    if (warnings.length === 0) {
+      warnings.push({
+        title: 'Normal Market Risk',
+        text: 'Standard market volatility applies — use proper position sizing and stop losses'
+      });
+    }
+
+    return warnings;
+  }, [d.confidence, d.momentum, d.volumeChange, d.dayHigh, d.price, isBullish, liveData?.ohlc]);
 
   const handleSetupAlert = async () => {
     if (rr?.isHold || !rr || !d.price) return;
@@ -569,7 +641,7 @@ export default function StockDetailPage() {
                   What could go wrong
                 </h3>
                 <ul className="text-sm text-gray-300 space-y-2 list-disc pl-4 marker:text-gray-600">
-                  {d.warnings?.map(w => (
+                  {dynamicWarnings.map(w => (
                     <li key={w.title}><strong className="text-white font-medium">{w.title}:</strong> {w.text}</li>
                   ))}
                 </ul>
@@ -591,14 +663,15 @@ export default function StockDetailPage() {
                       <div className="text-signal-red font-medium text-sm">{rr?.stopLoss ?? d.risk?.stopLoss ?? 'N/A'}</div>
                     </div>
                   </div>
-                  <button className={`w-full py-3.5 px-4 ${isBullish ? 'bg-signal-green hover:bg-emerald-400' : rr?.isHold ? 'bg-white/10 cursor-not-allowed' : 'bg-signal-red hover:bg-red-400'} text-base font-bold rounded-xl transition-all flex items-center justify-center gap-2 ${rr?.isHold ? 'opacity-50' : ''}`}
+                  <button className={`w-full py-3.5 px-4 ${isBullish ? 'bg-signal-green hover:bg-emerald-400' : rr?.isHold ? 'bg-amber-500/20 hover:bg-amber-500/30 cursor-default' : 'bg-signal-red hover:bg-red-400'} text-base font-bold rounded-xl transition-all flex items-center justify-center gap-2`}
                     disabled={rr?.isHold || alertState === 'loading'}
                     onClick={handleSetupAlert}>
                     {alertState === 'loading' && <svg className="animate-spin" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56" /></svg>}
                     {alertState === 'success' && <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12l5 5L20 7" /></svg>}
                     {alertState === 'error' && <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6 6 18M6 6l12 12" /></svg>}
                     {alertState === 'idle' && !rr?.isHold && <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14" /><path d="m12 5 7 7-7 7" /></svg>}
-                    {alertState === 'idle' ? (rr?.isHold ? 'No Trade Setup — Hold' : 'Setup Trade Alert') :
+                    {alertState === 'idle' && rr?.isHold && <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></svg>}
+                    {alertState === 'idle' ? (rr?.isHold ? 'Monitor Position' : 'Setup Trade Alert') :
                      alertState === 'loading' ? 'Creating Alert...' :
                      alertState === 'success' ? 'Alert Created!' : 'Failed — Try Again'}
                   </button>
