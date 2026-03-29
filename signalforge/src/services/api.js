@@ -295,20 +295,22 @@ export async function dbGetPortfolio(userId) {
   const data = await apiFetch(`/api/portfolio?user_id=${encodeURIComponent(userId)}`);
   const rawData = data?.data ?? data;
   
-  // Transform backend snake_case to frontend camelCase
-  if (rawData && rawData.items) {
+  // Backend returns holdings array with currentPrice, averagePrice, etc.
+  // Transform to ensure consistent field names (support both snake_case and camelCase)
+  if (rawData && rawData.holdings) {
     return {
       ...rawData,
-      holdings: rawData.items.map(item => ({
+      holdings: rawData.holdings.map(item => ({
         id: item.id,
         symbol: item.symbol,
         company_name: item.company_name || item.symbol,
         exchange: item.exchange || 'NSE',
         quantity: item.quantity,
-        averagePrice: item.avg_price,
-        average_price: item.avg_price,
-        currentPrice: item.current_price,
-        changePercent: item.price_change_percent || 0,
+        averagePrice: item.averagePrice || item.average_price || item.avg_price,
+        average_price: item.averagePrice || item.average_price || item.avg_price,
+        currentPrice: item.currentPrice || item.current_price,
+        current_price: item.currentPrice || item.current_price,
+        changePercent: item.changePercent || item.price_change_percent || 0,
         signal: item.signal,
         confidence: item.confidence,
         trend: item.trend,
