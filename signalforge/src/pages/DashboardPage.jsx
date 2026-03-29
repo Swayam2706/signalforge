@@ -461,6 +461,31 @@ export default function DashboardPage() {
                             <span className={`font-bold ${s.change >= 0 ? 'text-signal-green' : 'text-signal-red'}`}>
                               {s.change >= 0 ? '↑' : '↓'} {s.change >= 0 ? '+' : ''}{s.change}%
                             </span>
+                            {/* Confidence indicator */}
+                            {s.confidence !== undefined && s.confidence !== null && (
+                              <>
+                                <span className="text-gray-600">•</span>
+                                <div className="flex items-center gap-1">
+                                  <div className="relative w-10 h-1.5 bg-white/[0.08] rounded-full overflow-hidden">
+                                    <div 
+                                      className={`absolute inset-y-0 left-0 rounded-full transition-all duration-500 ${
+                                        s.confidence >= 70 ? 'bg-signal-green shadow-[0_0_4px_rgba(16,185,129,0.4)]' : 
+                                        s.confidence >= 50 ? 'bg-gold shadow-[0_0_4px_rgba(212,175,55,0.4)]' : 
+                                        'bg-signal-red shadow-[0_0_4px_rgba(239,68,68,0.4)]'
+                                      }`}
+                                      style={{ width: `${s.confidence}%` }}
+                                    />
+                                  </div>
+                                  <span className={`text-[10px] font-bold ${
+                                    s.confidence >= 70 ? 'text-signal-green' : 
+                                    s.confidence >= 50 ? 'text-gold' : 
+                                    'text-signal-red'
+                                  }`}>
+                                    {s.confidence}%
+                                  </span>
+                                </div>
+                              </>
+                            )}
                           </div>
                         </div>
                         
