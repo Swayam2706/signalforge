@@ -606,3 +606,187 @@ body {
 .bg-gradient-radial {
   background: radial-gradient(circle, var(--tw-gradient-stops));
 }
+
+/* ── Dashboard Background Animations ── */
+
+/* Animated grid drift */
+@keyframes grid-drift {
+  0% {
+    transform: translate(0, 0);
+  }
+  100% {
+    transform: translate(40px, 40px);
+  }
+}
+
+.animate-grid-drift {
+  animation: grid-drift 30s linear infinite;
+}
+
+/* Floating data points - 6 different patterns */
+@keyframes float-data-1 {
+  0%, 100% {
+    transform: translate(0, 0);
+    opacity: 0.3;
+  }
+  25% {
+    transform: translate(20px, -30px);
+    opacity: 0.6;
+  }
+  50% {
+    transform: translate(-15px, -50px);
+    opacity: 0.4;
+  }
+  75% {
+    transform: translate(-25px, -20px);
+    opacity: 0.5;
+  }
+}
+
+.animate-float-data-1 {
+  animation: float-data-1 18s ease-in-out infinite;
+}
+
+@keyframes float-data-2 {
+  0%, 100% {
+    transform: translate(0, 0);
+    opacity: 0.4;
+  }
+  33% {
+    transform: translate(-25px, 35px);
+    opacity: 0.7;
+  }
+  66% {
+    transform: translate(18px, 20px);
+    opacity: 0.5;
+  }
+}
+
+.animate-float-data-2 {
+  animation: float-data-2 22s ease-in-out infinite;
+  animation-delay: 3s;
+}
+
+@keyframes float-data-3 {
+  0%, 100% {
+    transform: translate(0, 0);
+    opacity: 0.35;
+  }
+  40% {
+    transform: translate(30px, 40px);
+    opacity: 0.65;
+  }
+  80% {
+    transform: translate(-20px, 25px);
+    opacity: 0.45;
+  }
+}
+
+.animate-float-data-3 {
+  animation: float-data-3 20s ease-in-out infinite;
+  animation-delay: 1.5s;
+}
+
+@keyframes float-data-4 {
+  0%, 100% {
+    transform: translate(0, 0);
+    opacity: 0.3;
+  }
+  30% {
+    transform: translate(-28px, -25px);
+    opacity: 0.6;
+  }
+  70% {
+    transform: translate(22px, -35px);
+    opacity: 0.5;
+  }
+}
+
+.animate-float-data-4 {
+  animation: float-data-4 24s ease-in-out infinite;
+  animation-delay: 4s;
+}
+
+@keyframes float-data-5 {
+  0%, 100% {
+    transform: translate(0, 0);
+    opacity: 0.35;
+  }
+  35% {
+    transform: translate(32px, -20px);
+    opacity: 0.65;
+  }
+  75% {
+    transform: translate(-18px, -38px);
+    opacity: 0.5;
+  }
+}
+
+.animate-float-data-5 {
+  animation: float-data-5 19s ease-in-out infinite;
+  animation-delay: 2s;
+}
+
+@keyframes float-data-6 {
+  0%, 100% {
+    transform: translate(0, 0);
+    opacity: 0.4;
+  }
+  45% {
+    transform: translate(-22px, 28px);
+    opacity: 0.7;
+  }
+  85% {
+    transform: translate(26px, 15px);
+    opacity: 0.55;
+  }
+}
+
+.animate-float-data-6 {
+  animation: float-data-6 21s ease-in-out infinite;
+  animation-delay: 3.5s;
+}
+
+/* Fade pulse for candlestick silhouettes */
+@keyframes fade-pulse-slow {
+  0%, 100% {
+    opacity: 0.04;
+  }
+  50% {
+    opacity: 0.08;
+  }
+}
+
+.animate-fade-pulse-slow {
+  animation: fade-pulse-slow 8s ease-in-out infinite;
+}
+
+.animate-fade-pulse-slower {
+  animation: fade-pulse-slow 12s ease-in-out infinite;
+  animation-delay: 4s;
+}
+
+/* Radial vignette */
+.bg-radial-vignette {
+  background: radial-gradient(
+    ellipse at center,
+    transparent 0%,
+    transparent 50%,
+    rgba(10, 10, 10, 0.3) 100%
+  );
+}
+
+/* Respect prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  .animate-grid-drift,
+  .animate-float-data-1,
+  .animate-float-data-2,
+  .animate-float-data-3,
+  .animate-float-data-4,
+  .animate-float-data-5,
+  .animate-float-data-6,
+  .animate-fade-pulse-slow,
+  .animate-fade-pulse-slower {
+    animation: none;
+  }
+}
