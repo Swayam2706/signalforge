@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useUser } from '@clerk/clerk-react';
 import DashboardLayout from '../components/DashboardLayout';
+import AIResponseCard from '../components/AIResponseCard';
 import { suggestedPrompts } from '../data/mockData';
 import { getDashboardOverview } from '../services/api';
 import { useApi } from '../hooks/useApi';
@@ -208,34 +209,39 @@ export default function AssistantPage() {
       const result = await processAssistantQuery(q);
       setTyping(false);
       
-      // Determine response type
-      const type = result.type === 'bullish' ? 'bullish' : 
-                   result.type === 'risky' ? 'risky' : 
-                   result.type === 'clarification' ? 'risky' :
-                   result.type === 'error' ? 'risky' : 'risky';
+      // Determine response type based on result
+      const type = result.type || 'neutral';
+      const mode = result.mode || 'stock_result';
       
       setMessages(prev => [...prev, { 
         role: 'ai', 
         data: result.data, 
         type,
+        mode,
         stockData: result.stockData,
-        parsed: result.parsed
+        intent: result.intent
       }]);
     } catch (error) {
       // Fallback to generic response
       setTyping(false);
       console.error('Assistant error:', error);
-      setMessages(prev => [...prev, { role: 'ai', data: {
-        summary: `I encountered an issue processing your query. Please try asking about a specific stock ticker like RELIANCE, TCS, or INFY for detailed analysis.`,
-        signalStatus: 'Error', 
-        confidence: 0, 
-        action: 'Retry', 
-        actionTerm: 'Immediate',
-        riskFactors: ['Query processing failed', 'Please try again with a specific ticker'],
-        catalysts: [],
-        sentimentChange: 'N/A',
-        signalStrength: 0
-      }, type: 'risky' }]);
+      setMessages(prev => [...prev, { 
+        role: 'ai', 
+        data: {
+          summary: `I encountered an issue processing your query. Please try asking about a specific stock ticker like RELIANCE, TCS, or INFY for detailed analysis.`,
+          signalStatus: 'Error', 
+          confidence: 0, 
+          action: 'Retry', 
+          actionTerm: 'Immediate',
+          riskFactors: ['Query processing failed', 'Please try again with a specific ticker'],
+          catalysts: [],
+          sentimentChange: 'N/A',
+          signalStrength: 0,
+          needsClarification: true
+        }, 
+        type: 'neutral',
+        mode: 'clarification_result'
+      }]);
     }
   };
 
@@ -379,7 +385,7 @@ export default function AssistantPage() {
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" /></svg>
                       </div>
                       <div className="flex-1">
-                        <AIResponseCard data={msg.data} type={msg.type} />
+                        <AIResponseCard data={msg.data} type={msg.type} mode={msg.mode} />
                       </div>
                     </div>
                   )}
