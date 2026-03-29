@@ -1,5 +1,5 @@
 import { useParams, Link } from 'react-router-dom';
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo, useEffect, useRef, useCallback, React } from 'react';
 import DashboardLayout from '../components/DashboardLayout';
 import TopBar from '../components/TopBar';
 import ConfidenceMeter from '../components/ConfidenceMeter';
@@ -14,13 +14,14 @@ const timeframes = ['1D', '1W', '1M', '3M', '1Y'];
 /**
  * Interactive Chart Component with Hover Tooltip
  * Provides TradingView-style hover interaction
+ * OPTIMIZATION: Memoized to prevent unnecessary re-renders
  */
-function InteractiveChart({ chartData, chartApiData, timeframe, isBullish, currentPrice, symbol }) {
+const InteractiveChart = React.memo(function InteractiveChart({ chartData, chartApiData, timeframe, isBullish, currentPrice, symbol }) {
   const [hoverPoint, setHoverPoint] = useState(null);
   const [mousePos, setMousePos] = useState(null);
   const svgRef = useRef(null);
 
-  const formatTimestamp = (timestamp, tf) => {
+  const formatTimestamp = useCallback((timestamp, tf) => {
     if (!timestamp) return '';
     const date = new Date(timestamp * 1000);
     
@@ -31,9 +32,9 @@ function InteractiveChart({ chartData, chartApiData, timeframe, isBullish, curre
     } else {
       return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
     }
-  };
+  }, []);
 
-  const handleMouseMove = (e) => {
+  const handleMouseMove = useCallback((e) => {
     if (!svgRef.current || !chartData || chartData.length === 0) return;
     
     const svg = svgRef.current;
@@ -58,8 +59,6 @@ function InteractiveChart({ chartData, chartApiData, timeframe, isBullish, curre
     });
     
     if (closestPoint && minDist < 50) {
-      // CRITICAL FIX: Use the price and timestamp stored in the chart point itself
-      // Each chartData point has the correct price and timestamp from the API transformation
       const price = closestPoint.price || currentPrice;
       const timestamp = closestPoint.timestamp;
       const prevPrice = closestPoint.idx > 0 ? (chartData[closestPoint.idx - 1]?.price || price) : price;
@@ -78,22 +77,29 @@ function InteractiveChart({ chartData, chartApiData, timeframe, isBullish, curre
       setHoverPoint(null);
       setMousePos(null);
     }
-  };
+  }, [chartData, currentPrice]);
 
-  const handleMouseLeave = () => {
+  const handleMouseLeave = useCallback(() => {
     setHoverPoint(null);
     setMousePos(null);
-  };
+  }, []);
+
+  // OPTIMIZATION: Memoize path calculations
+  const { viewBoxWidth, linePath, lastPt } = useMemo(() => {
+    if (!chartData || chartData.length === 0) {
+      return { viewBoxWidth: 800, linePath: '', lastPt: null };
+    }
+    
+    const vbWidth = Math.max(800, ...chartData.map(p => p.x + 20));
+    const lPath = chartData.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
+    const lPt = chartData[chartData.length - 1];
+    
+    return { viewBoxWidth: vbWidth, linePath: lPath, lastPt: lPt };
+  }, [chartData]);
 
   if (!chartData || chartData.length === 0) {
-    // Return null during loading - parent will show loading state
-    // Only show empty message if we're not loading
     return null;
   }
-
-  const viewBoxWidth = Math.max(800, ...chartData.map(p => p.x + 20));
-  const lastPt = chartData[chartData.length - 1];
-  const linePath = chartData.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
 
   return (
     <div className="relative w-full h-full">
@@ -139,7 +145,6 @@ function InteractiveChart({ chartData, chartApiData, timeframe, isBullish, curre
         {/* Hover crosshair */}
         {hoverPoint && (
           <>
-            {/* Vertical line */}
             <line 
               x1={hoverPoint.x} 
               y1="0" 
@@ -149,7 +154,6 @@ function InteractiveChart({ chartData, chartApiData, timeframe, isBullish, curre
               strokeWidth="1" 
               strokeDasharray="4,4"
             />
-            {/* Horizontal line */}
             <line 
               x1="0" 
               y1={hoverPoint.y} 
@@ -159,7 +163,6 @@ function InteractiveChart({ chartData, chartApiData, timeframe, isBullish, curre
               strokeWidth="1" 
               strokeDasharray="4,4"
             />
-            {/* Hover point */}
             <circle 
               cx={hoverPoint.x} 
               cy={hoverPoint.y} 
@@ -212,7 +215,16 @@ function InteractiveChart({ chartData, chartApiData, timeframe, isBullish, curre
       )}
     </div>
   );
-}
+}, (prevProps, nextProps) => {
+  // Custom comparison for better performance
+  return (
+    prevProps.symbol === nextProps.symbol &&
+    prevProps.timeframe === nextProps.timeframe &&
+    prevProps.isBullish === nextProps.isBullish &&
+    prevProps.currentPrice === nextProps.currentPrice &&
+    prevProps.chartData === nextProps.chartData
+  );
+});
 
 /**
  * Compute risk/reward levels from real price data.
@@ -330,7 +342,7 @@ export default function StockDetailPage() {
   useEffect(() => {
     if (!symbol) return;
 
-    // Check cache first — if hit, no loading state needed
+    // Phase 1: Check cache first — instant render if hit
     const cached = getCachedDetail(symbol);
     if (cached) {
       setLiveData(cached);
@@ -343,19 +355,22 @@ export default function StockDetailPage() {
           timestamps: cached.ohlc.map(pt => pt.timestamp),
         };
         setChartData(chartFromOhlc);
-        setLoadingChart(false); // Chart ready from cache
+        setLoadingChart(false);
         chartCacheRef.current.set('1M', chartFromOhlc);
       }
     } else {
       setLoadingDetail(true);
-      setLoadingChart(true); // Ensure loading state is set
+      setLoadingChart(true);
     }
 
-    // CRITICAL FIX: Update state as EACH request completes (not waiting for all)
-    // This makes the page feel much faster - quote appears in ~300ms, not ~800ms
+    // Phase 2: CRITICAL OPTIMIZATION - Parallel fetch with immediate updates
+    // Each request updates state as soon as it completes (not waiting for others)
+    // This makes perceived load time ~300ms instead of ~800ms
     
-    // Fetch quote (fastest ~300ms) - update immediately when ready
-    getFinnhubQuote(symbol)
+    let detailPromise, quotePromise;
+
+    // Start both requests immediately in parallel
+    quotePromise = getFinnhubQuote(symbol)
       .then(quote => {
         if (mountedRef.current && quote?.price > 0) {
           setFinnhubQuote(quote);
@@ -363,8 +378,7 @@ export default function StockDetailPage() {
       })
       .catch(() => {});
 
-    // Fetch detail (slower ~800ms) - update when ready
-    fetchStockDetail(symbol)
+    detailPromise = fetchStockDetail(symbol)
       .then(detail => {
         if (mountedRef.current && detail) {
           setLiveData(detail);
@@ -379,6 +393,7 @@ export default function StockDetailPage() {
               timestamps: detail.ohlc.map(pt => pt.timestamp),
             };
             setChartData(chartFromOhlc);
+            setLoadingChart(false);
             chartCacheRef.current.set('1M', chartFromOhlc);
           }
         }
@@ -387,7 +402,7 @@ export default function StockDetailPage() {
         if (mountedRef.current) setLoadingDetail(false);
       });
 
-    // Poll quote every 15s for live updates
+    // Poll quote every 15s for live updates (only after initial load)
     const pollId = setInterval(() => {
       getFinnhubQuote(symbol).then(q => {
         if (mountedRef.current && q?.price > 0) setFinnhubQuote(q);
@@ -421,6 +436,7 @@ export default function StockDetailPage() {
           timestamps: liveData.ohlc.map(pt => pt.timestamp),
         };
         setChartData(chartFromOhlc);
+        setLoadingChart(false);
         chartCacheRef.current.set('1M', chartFromOhlc);
       }
       return;
@@ -438,18 +454,26 @@ export default function StockDetailPage() {
     const params = timeframeMap[tf] || timeframeMap['1M'];
     
     setLoadingChart(true);
+    
+    // OPTIMIZATION: Use AbortController to cancel previous requests
+    const controller = new AbortController();
+    
     getUnifiedChart(symbol, params.period, params.interval)
       .then(data => {
-        if (mountedRef.current && data) {
+        if (mountedRef.current && data && !controller.signal.aborted) {
           setChartData(data);
           chartCacheRef.current.set(tf, data); // Cache for instant switching
           setLoadingChart(false);
         }
       })
       .catch(err => {
-        console.error('Chart fetch error:', err);
-        if (mountedRef.current) setLoadingChart(false);
+        if (!controller.signal.aborted) {
+          console.error('Chart fetch error:', err);
+          if (mountedRef.current) setLoadingChart(false);
+        }
       });
+
+    return () => controller.abort();
   }, [symbol, tf, liveData]);
 
   // Finnhub WebSocket for live price ticks
