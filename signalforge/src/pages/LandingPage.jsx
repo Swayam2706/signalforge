@@ -137,10 +137,10 @@ export default function LandingPage() {
 
               {/* Right — Candlestick visualization */}
               <div className="relative flex-1 lg:w-[46%] min-h-[360px] lg:min-h-0 opacity-[0.55]">
-                {/* "Live Market Terminal" label */}
+                {/* "Market Terminal" label */}
                 <div className="absolute top-5 left-6 z-20 flex items-center gap-3">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#D4AF37" strokeWidth="2" className="opacity-60"><rect width="18" height="18" x="3" y="3" rx="2" /><line x1="3" x2="21" y1="9" y2="9" /><line x1="9" x2="9" y1="21" y2="9" /></svg>
-                  <span className="text-xs font-medium text-gray-500 tracking-wide">Live Market Terminal</span>
+                  <span className="text-xs font-medium text-gray-500 tracking-wide">Market Terminal</span>
                   <div className="flex items-center gap-1.5 ml-2">
                     <span className="live-dot" />
                     <span className="text-[10px] font-medium text-signal-green/70 uppercase tracking-wider">LIVE</span>
