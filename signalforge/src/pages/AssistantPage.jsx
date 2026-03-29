@@ -75,7 +75,7 @@ export default function AssistantPage() {
 
     try {
       // Process query using enhanced assistant engine
-      const result = await processAssistantQuery(q);
+      const result = await processAssistantQuery(q, user?.id);
       setTyping(false);
       
       // Determine response type based on result
